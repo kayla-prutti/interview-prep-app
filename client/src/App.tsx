@@ -418,7 +418,7 @@ function App() {
       </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 grid place-items-center overflow-auto bg-slate-950/35 px-5 py-12">
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-auto bg-slate-950/35 px-5 py-12">
           <form className="w-full max-w-2xl rounded-md border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={handleSubmit} style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}>
             <header className="cursor-grab select-none active:cursor-grabbing" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
               <div className="flex items-start gap-3">
