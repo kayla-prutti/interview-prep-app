@@ -1,0 +1,22 @@
+import type { CustomCellRendererProps } from "ag-grid-react";
+import { BinIcon, EyeIcon, PenIcon } from "../../components/Icons";
+import { interviewerBadgeClass, interviewerLabel } from "../../lib/interviews";
+import type { Interview } from "../../types";
+import type { InterviewGridContext } from "./types";
+
+export function InterviewTypeCell({ data }: CustomCellRendererProps<Interview>) {
+  if (!data) return null;
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${interviewerBadgeClass(data.interviewer_type)}`}>{interviewerLabel(data.interviewer_type)}</span>;
+}
+
+export function InterviewActionsCell({ context, data }: CustomCellRendererProps<Interview>) {
+  if (!data) return null;
+  const actions = context as InterviewGridContext;
+  return (
+    <div className="flex h-full items-center gap-1">
+      <button aria-label={`View ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onView(data)} title="View interview" type="button"><EyeIcon /></button>
+      <button aria-label={`Edit ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onEdit(data)} title="Edit interview" type="button"><PenIcon /></button>
+      <button aria-label={`Delete ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-700" onClick={() => actions.onDelete(data)} title="Delete interview" type="button"><BinIcon /></button>
+    </div>
+  );
+}
