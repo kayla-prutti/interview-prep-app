@@ -4,11 +4,12 @@ import { ArchiveIcon, BookIcon, CollapseIcon, PracticeIcon, QuestionIcon } from 
 type SidebarProps = {
   activePage: Page;
   collapsed: boolean;
+  practiceCount: number;
   onCollapseChange: (collapsed: boolean) => void;
   onPageChange: (page: Page) => void;
 };
 
-export function Sidebar({ activePage, collapsed, onCollapseChange, onPageChange }: SidebarProps) {
+export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange, onPageChange }: SidebarProps) {
   const itemClass = (page: Page) => `flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${collapsed ? "md:justify-center" : ""} ${activePage === page ? "bg-[#F5822A] font-semibold text-[#202020]" : "text-[#F4F4F2] hover:bg-black/10 hover:text-white"}`;
 
   return (
@@ -26,7 +27,7 @@ export function Sidebar({ activePage, collapsed, onCollapseChange, onPageChange 
       <nav className="mt-4 grid grid-cols-2 gap-1 md:mt-10 md:grid-cols-1 md:gap-2" aria-label="Main navigation">
         <button aria-label="Interviews" className={itemClass("interviews")} title={collapsed ? "Interviews" : undefined} type="button" onClick={() => onPageChange("interviews")}><ArchiveIcon /><span className={collapsed ? "md:hidden" : ""}>Interviews</span></button>
         <button aria-label="Question library" className={itemClass("questions")} title={collapsed ? "Question library" : undefined} type="button" onClick={() => onPageChange("questions")}><QuestionIcon /><span className={collapsed ? "md:hidden" : ""}>Question library</span></button>
-        <button aria-label="Practice, coming soon" className={`hidden items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-stone-500 md:flex ${collapsed ? "md:justify-center" : ""}`} disabled title={collapsed ? "Practice, coming soon" : undefined} type="button"><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Practice <span className="float-right ml-5 text-[10px] uppercase tracking-wider">Soon</span></span></button>
+        <button aria-label="Practice" className={itemClass("practice")} title={collapsed ? "Practice" : undefined} type="button" onClick={() => onPageChange("practice")}><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Practice{practiceCount > 0 && <span className="float-right ml-5 rounded-full bg-white/15 px-2 py-0.5 text-[10px]">{practiceCount}</span>}</span></button>
       </nav>
 
       <p className={`mt-auto hidden border-t border-white/20 px-2 pt-5 text-sm text-[#ECECEA] md:block ${collapsed ? "md:hidden" : ""}`}>A record of what you learned, one interview at a time.</p>

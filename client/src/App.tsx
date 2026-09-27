@@ -17,6 +17,7 @@ import { interviewColumns } from "./features/interviews/columns";
 import type { InterviewGridContext } from "./features/interviews/types";
 import { questionColumns } from "./features/questions/columns";
 import type { QuestionGridContext } from "./features/questions/types";
+import { PracticePage } from "./features/practice/PracticePage";
 import {
   emptyInterviewForm as emptyForm,
   formatDate,
@@ -131,6 +132,7 @@ function App() {
   const activeQuestions = activeQuestionType === "all"
     ? filteredQuestions
     : filteredQuestions.filter((question) => question.interviewer_type === activeQuestionType);
+  const practiceQuestions = questions.filter((question) => practiceQuestionIds.has(question.id));
 
   const questionRows = form.questions ?? [""];
 
@@ -295,17 +297,19 @@ function App() {
     onDelete: openDeleteConfirmation,
   };
 
+  function togglePracticeQuestion(questionId: number) {
+    setPracticeQuestionIds((current) => {
+      const next = new Set(current);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      localStorage.setItem("i-prep-practice-questions", JSON.stringify([...next]));
+      return next;
+    });
+  }
+
   const questionGridContext: QuestionGridContext = {
     isAddedToPractice: (questionId) => practiceQuestionIds.has(questionId),
-    onTogglePractice: (questionId) => {
-      setPracticeQuestionIds((current) => {
-        const next = new Set(current);
-        if (next.has(questionId)) next.delete(questionId);
-        else next.add(questionId);
-        localStorage.setItem("i-prep-practice-questions", JSON.stringify([...next]));
-        return next;
-      });
-    },
+    onTogglePractice: togglePracticeQuestion,
   };
 
   const interviewTabs: FolderTab<InterviewFilter>[] = interviewSections.map((section) => ({
@@ -329,6 +333,7 @@ function App() {
       <Sidebar
         activePage={page}
         collapsed={isSidebarCollapsed}
+        practiceCount={practiceQuestions.length}
         onCollapseChange={setIsSidebarCollapsed}
         onPageChange={setPage}
       />
@@ -372,7 +377,7 @@ function App() {
             </section>
             </div>
           </section>
-        ) : (
+        ) : page === "questions" ? (
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="questions">
             <PageHeader description="Browse every saved question by the kind of conversation where it appeared." eyebrow="Reference collection" title="Question library" />
 
@@ -403,6 +408,12 @@ function App() {
               </div>
             )}
           </section>
+        ) : (
+          <PracticePage
+            questions={practiceQuestions}
+            onBrowseQuestions={() => setPage("questions")}
+            onRemoveQuestion={togglePracticeQuestion}
+          />
         )}
       </main>
 
