@@ -9,11 +9,11 @@ type PracticePageProps = {
   interviews: PracticeInterview[];
   isLoadingQuestions: boolean;
   questions: PracticeQuestion[];
-  onBrowseQuestions: () => void;
+  onBrowseQuestions: (interviewId: number) => void;
   onCreateInterview: (form: PracticeInterviewForm) => Promise<void>;
   onRemoveQuestion: (questionId: number) => Promise<void>;
   onSaveAnswer: (questionId: number, answer: string) => Promise<void>;
-  onSelectInterview: (interviewId: number) => void;
+  onSelectInterview: (interviewId: number | null) => void;
 };
 
 const emptyPracticeForm: PracticeInterviewForm = {
@@ -29,7 +29,6 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
   const [modalError, setModalError] = useState("");
   const [selectedQuestion, setSelectedQuestion] = useState<PracticeQuestion | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
-  const activeInterview = interviews.find((interview) => interview.id === activeInterviewId) ?? null;
 
   function openAnswerModal(question: PracticeQuestion) {
     setSelectedQuestion(question);
@@ -81,72 +80,83 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
           <button className="mt-5 rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => setIsCreateOpen(true)}>+ New prep interview</button>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto pb-5">
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pb-5">
             {interviews.map((interview) => {
-              const isActive = interview.id === activeInterviewId;
+              const isOpen = interview.id === activeInterviewId;
               return (
-                <button className={`rounded-xl border p-4 text-left transition ${isActive ? "border-[#F5822A] bg-[#FFF0E5] shadow-sm" : "border-[#D6D6D2] bg-white hover:border-[#F5822A]"}`} key={interview.id} type="button" onClick={() => onSelectInterview(interview.id)}>
-                  <span className="block text-xs font-bold uppercase tracking-[0.12em] text-[#C95712]">{interviewerLabel(interview.interviewer_type)}</span>
-                  <span className="mt-1 block text-lg font-bold text-[#202020]">{interview.company}</span>
-                  <span className="mt-0.5 block text-sm text-[#686868]">{interview.role}</span>
-                  <span className="mt-3 block text-xs font-medium text-[#686868]">{interview.answered_count} of {interview.question_count} answered</span>
-                </button>
+                <article className={`overflow-hidden rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
+                  <button
+                    aria-expanded={isOpen}
+                    className={`flex w-full items-center justify-between gap-5 px-5 py-5 text-left transition sm:px-6 ${isOpen ? "bg-[#FFF7F0]" : "hover:bg-[#FAFAF8]"}`}
+                    type="button"
+                    onClick={() => onSelectInterview(isOpen ? null : interview.id)}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">{interviewerLabel(interview.interviewer_type)} prep</span>
+                      <span className="mt-1 block truncate text-xl font-bold text-[#202020]">{interview.company}</span>
+                      <span className="mt-0.5 block truncate text-sm text-[#686868]">{interview.role}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-4">
+                      <span className="hidden text-right sm:block">
+                        <span className="block text-sm font-bold text-[#303030]">{interview.question_count} {interview.question_count === 1 ? "question" : "questions"}</span>
+                        <span className="mt-0.5 block text-xs text-[#686868]">{interview.answered_count} answered</span>
+                      </span>
+                      <svg aria-hidden="true" className={`h-5 w-5 text-[#686868] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24">
+                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      </svg>
+                    </span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-[#D6D6D2]">
+                      {isLoadingQuestions ? (
+                        <p className="px-6 py-8 text-sm text-[#686868]">Loading practice questions...</p>
+                      ) : questions.length === 0 ? (
+                        <div className="px-6 py-10 text-center">
+                          <p className="text-base font-semibold text-[#686868]">No questions</p>
+                          <button className="mt-4 rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => onBrowseQuestions(interview.id)}>+ Add question</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between border-b border-[#E4E4E1] px-5 py-3 sm:px-6">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#686868]">Selected questions</p>
+                            <button className="rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => onBrowseQuestions(interview.id)}>+ Add question</button>
+                          </div>
+                          <ol className="divide-y divide-[#E4E4E1]">
+                            {questions.map((question, index) => {
+                              const answer = question.answer?.trim();
+                              return (
+                                <li className="px-5 py-5 sm:px-6" key={question.id}>
+                                  <div className="flex items-start gap-4">
+                                    <span className="pt-1 text-sm font-semibold text-[#8A8A86]">{String(index + 1).padStart(2, "0")}</span>
+                                    <div className="min-w-0 flex-1">
+                                      <button className="w-full text-left text-base font-semibold leading-7 text-[#202020] hover:text-[#C95712]" type="button" onClick={() => openAnswerModal(question)}>{question.question_text}</button>
+                                      {question.source_company && <p className="mt-1 text-xs uppercase tracking-[0.1em] text-[#686868]">From {question.source_company}</p>}
+                                      {answer ? (
+                                        <details className="mt-4 rounded-lg border border-[#D6D6D2] bg-[#FAFAF8]">
+                                          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-[#9A3D00]">Reveal saved answer</summary>
+                                          <div className="whitespace-pre-wrap border-t border-[#D6D6D2] px-4 py-4 text-sm leading-6 text-[#303030]">{answer}</div>
+                                        </details>
+                                      ) : (
+                                        <button className="mt-4 rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => openAnswerModal(question)}>Add answer</button>
+                                      )}
+                                    </div>
+                                    <div className="flex shrink-0 gap-1">
+                                      <button aria-label={answer ? "Edit answer" : "Add answer"} className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title={answer ? "Edit answer" : "Add answer"} type="button" onClick={() => openAnswerModal(question)}><PenIcon /></button>
+                                      <button aria-label="Remove from this prep interview" className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Remove from this prep interview" type="button" onClick={() => void onRemoveQuestion(question.id)}><BinIcon /></button>
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </article>
               );
             })}
-          </div>
-
-          {activeInterview ? (
-            <section className="mt-5 overflow-hidden rounded-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)]">
-              <header className="flex flex-col gap-4 border-b border-[#D6D6D2] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">{interviewerLabel(activeInterview.interviewer_type)} prep</p>
-                  <h2 className="mt-1 text-2xl font-bold text-[#202020]">{activeInterview.company} · {activeInterview.role}</h2>
-                </div>
-                <button className="rounded-md border border-[#F5822A] px-4 py-2 text-sm font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={onBrowseQuestions}>+ Add questions</button>
-              </header>
-
-              {isLoadingQuestions ? (
-                <p className="px-6 py-8 text-sm text-[#686868]">Loading practice questions...</p>
-              ) : questions.length === 0 ? (
-                <div className="px-6 py-10 text-center">
-                  <p className="text-sm text-[#686868]">This prep interview has no questions yet.</p>
-                  <button className="mt-4 rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020]" type="button" onClick={onBrowseQuestions}>Choose from Question Library</button>
-                </div>
-              ) : (
-                <ol className="divide-y divide-[#E4E4E1]">
-                  {questions.map((question, index) => {
-                    const answer = question.answer?.trim();
-                    return (
-                      <li className="px-5 py-5 sm:px-6" key={question.id}>
-                        <div className="flex items-start gap-4">
-                          <span className="pt-1 text-sm font-semibold text-[#8A8A86]">{String(index + 1).padStart(2, "0")}</span>
-                          <div className="min-w-0 flex-1">
-                            <button className="w-full text-left text-base font-semibold leading-7 text-[#202020] hover:text-[#C95712]" type="button" onClick={() => openAnswerModal(question)}>{question.question_text}</button>
-                            {question.source_company && <p className="mt-1 text-xs uppercase tracking-[0.1em] text-[#686868]">From {question.source_company}</p>}
-                            {answer ? (
-                              <details className="mt-4 rounded-lg border border-[#D6D6D2] bg-[#FAFAF8]">
-                                <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-[#9A3D00]">Reveal saved answer</summary>
-                                <div className="whitespace-pre-wrap border-t border-[#D6D6D2] px-4 py-4 text-sm leading-6 text-[#303030]">{answer}</div>
-                              </details>
-                            ) : (
-                              <button className="mt-4 rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => openAnswerModal(question)}>Add reference answer</button>
-                            )}
-                          </div>
-                          <div className="flex shrink-0 gap-1">
-                            <button aria-label={answer ? "Edit answer" : "Add answer"} className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title={answer ? "Edit answer" : "Add answer"} type="button" onClick={() => openAnswerModal(question)}><PenIcon /></button>
-                            <button aria-label="Remove from this prep interview" className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Remove from this prep interview" type="button" onClick={() => void onRemoveQuestion(question.id)}><BinIcon /></button>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-            </section>
-          ) : (
-            <p className="mt-8 text-center text-sm text-[#686868]">Select a prep interview to view its questions.</p>
-          )}
         </div>
       )}
 

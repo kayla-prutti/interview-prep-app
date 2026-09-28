@@ -314,10 +314,10 @@ function App() {
     onDelete: openDeleteConfirmation,
   };
 
-  function selectPracticeInterview(practiceInterviewId: number) {
+  function selectPracticeInterview(practiceInterviewId: number | null) {
     setActivePracticeId(practiceInterviewId);
     setPracticeQuestions([]);
-    void loadPracticeQuestions(practiceInterviewId);
+    if (practiceInterviewId) void loadPracticeQuestions(practiceInterviewId);
   }
 
   async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
@@ -446,7 +446,7 @@ function App() {
             <div className="mt-4 flex max-w-2xl flex-col gap-2 rounded-lg border border-[#D6D6D2] bg-white px-4 py-3 sm:flex-row sm:items-center">
               <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
                 <span className="shrink-0">Adding to</span>
-                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => { const value = Number(event.target.value); if (value) selectPracticeInterview(value); else { setActivePracticeId(null); setPracticeQuestions([]); } }}>
+                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => selectPracticeInterview(Number(event.target.value) || null)}>
                   <option value="">Select a prep interview</option>
                   {practiceInterviews.map((interview) => <option key={interview.id} value={interview.id}>{interview.company} — {interview.role} ({interviewerLabel(interview.interviewer_type)})</option>)}
                 </select>
@@ -485,7 +485,10 @@ function App() {
             interviews={practiceInterviews}
             isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}
-            onBrowseQuestions={() => setPage("questions")}
+            onBrowseQuestions={(interviewId) => {
+              selectPracticeInterview(interviewId);
+              setPage("questions");
+            }}
             onCreateInterview={createPracticeInterview}
             onRemoveQuestion={removePracticeQuestion}
             onSaveAnswer={savePracticeAnswer}
