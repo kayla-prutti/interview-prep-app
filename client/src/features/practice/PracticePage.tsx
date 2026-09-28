@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BinIcon, PenIcon } from "../../components/Icons";
 import { PageHeader } from "../../components/PageHeader";
 import { interviewerLabel } from "../../lib/interviews";
 import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion } from "../../types";
 
 type PracticePageProps = {
+  accountControl?: ReactNode;
   interviews: PracticeInterview[];
   isLoadingQuestions: boolean;
   questions: PracticeQuestion[];
@@ -22,7 +23,7 @@ const emptyPracticeForm: PracticeInterviewForm = {
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ accountControl, interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
@@ -85,6 +86,7 @@ export function PracticePage({ interviews, isLoadingQuestions, questions, onBrow
   return (
     <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="practice">
       <PageHeader
+        accountControl={accountControl}
         action={<button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => setIsCreateOpen(true)}>+ New prep interview</button>}
         description="Create a prep interview, collect its questions, and reveal saved answers when you are ready to compare."
         eyebrow="Preparation desk"

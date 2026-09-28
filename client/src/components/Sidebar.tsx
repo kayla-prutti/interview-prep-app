@@ -3,16 +3,14 @@ import { ArchiveIcon, BookIcon, CollapseIcon, PracticeIcon, QuestionIcon } from 
 
 type SidebarProps = {
   activePage: Page;
-  accountEmail?: string;
   collapsed: boolean;
   practiceCount: number;
   onCollapseChange: (collapsed: boolean) => void;
   onPageChange: (page: Page) => void;
   onShowGuide: () => void;
-  onSignOut?: () => Promise<void>;
 };
 
-export function Sidebar({ accountEmail, activePage, collapsed, practiceCount, onCollapseChange, onPageChange, onShowGuide, onSignOut }: SidebarProps) {
+export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange, onPageChange, onShowGuide }: SidebarProps) {
   const itemClass = (page: Page) => `flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${collapsed ? "md:justify-center" : ""} ${activePage === page ? "bg-[#F5822A] font-semibold text-[#202020]" : "text-[#F4F4F2] hover:bg-black/10 hover:text-white"}`;
 
   return (
@@ -34,12 +32,6 @@ export function Sidebar({ accountEmail, activePage, collapsed, practiceCount, on
       </nav>
 
       <div className="mt-auto hidden border-t border-white/20 pt-4 md:block">
-        {accountEmail && (
-          <div className={`mb-3 px-2 ${collapsed ? "text-center" : ""}`}>
-            <p className={`truncate text-xs font-semibold text-[#ECECEA] ${collapsed ? "hidden" : ""}`} title={accountEmail}>{accountEmail}</p>
-            <button aria-label="Sign out" className={`mt-2 text-xs font-bold text-[#FFB47B] hover:text-white ${collapsed ? "mt-0" : ""}`} title="Sign out" type="button" onClick={() => void onSignOut?.()}>{collapsed ? "↪" : "Sign out"}</button>
-          </div>
-        )}
         <button aria-label="How it works" className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm font-semibold text-[#F4F4F2] hover:bg-black/10 hover:text-white ${collapsed ? "justify-center" : ""}`} title="How it works" type="button" onClick={onShowGuide}>
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/40 text-xs font-bold">?</span>
           <span className={collapsed ? "md:hidden" : ""}>How it works</span>

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { apiFetch } from "./api";
+import { AccountMenu } from "./components/AccountMenu";
 import { DataTable } from "./components/DataTable";
 import { FolderTabs, type FolderTab } from "./components/FolderTabs";
 import { BinIcon, PenIcon } from "./components/Icons";
@@ -411,23 +412,26 @@ function App({ accountEmail, onSignOut }: AppProps) {
       : filteredQuestions.filter((question) => question.interviewer_type === section.type).length,
   }));
 
+  const accountControl = accountEmail && onSignOut
+    ? <AccountMenu email={accountEmail} onLogOut={onSignOut} />
+    : undefined;
+
   return (
     <div className={`flex h-[100dvh] w-full flex-col overflow-hidden bg-[#F4F4F2] text-[#202020] transition-[grid-template-columns] duration-200 md:grid ${isSidebarCollapsed ? "md:grid-cols-[76px_minmax(0,1fr)]" : "md:grid-cols-[238px_minmax(0,1fr)]"}`}>
       <Sidebar
-        accountEmail={accountEmail}
         activePage={page}
         collapsed={isSidebarCollapsed}
         practiceCount={practiceInterviews.length}
         onCollapseChange={setIsSidebarCollapsed}
         onPageChange={setPage}
         onShowGuide={() => setIsGuideOpen(true)}
-        onSignOut={onSignOut}
       />
 
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 pb-9 sm:px-9 md:pb-5 lg:px-10" id="top">
         {page === "interviews" ? (
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="interviews">
             <PageHeader
+              accountControl={accountControl}
               action={(
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setForm(emptyForm); setModalPosition({ x: 0, y: 0 }); setIsModalOpen(true); }}>
                 + New interview
@@ -465,7 +469,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
           </section>
         ) : page === "questions" ? (
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="questions">
-            <PageHeader description="Browse every saved question by the kind of conversation where it appeared." eyebrow="Reference collection" title="Question library" />
+            <PageHeader accountControl={accountControl} description="Browse every saved question by the kind of conversation where it appeared." eyebrow="Reference collection" title="Question library" />
 
             <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={setQuestionSearch} onClear={() => setQuestionSearch("")} />
 
@@ -507,6 +511,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
           </section>
         ) : (
           <PracticePage
+            accountControl={accountControl}
             interviews={practiceInterviews}
             isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}
