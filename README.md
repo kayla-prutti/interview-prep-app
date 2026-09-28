@@ -14,7 +14,7 @@ I created i-Prep to give that information a permanent home. I wanted it to feel 
 
 ## Design inspiration
 
-The visual theme is inspired by the gray, black, white, and orange colors in my university emblem. The interface also draws from traditional paper filing systems: folders used to store handwritten records, labeled tabs that separate topics, and sticky notes that make important information easy to find.
+The visual theme is inspired by the gray, black, white, and orange colors in my university emblem. The interface also draws from traditional paper filing systems: folders used to store handwritten records and labeled index tabs that separate information into clear categories.
 
 This familiar library and archive style supports the purpose of the app. Interviews are stored as records, questions are organized into type-based folders, and preparation sets bring selected questions and answers together for practice.
 
