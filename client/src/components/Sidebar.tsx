@@ -27,7 +27,7 @@ export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange
       <nav className="mt-4 grid grid-cols-2 gap-1 md:mt-10 md:grid-cols-1 md:gap-2" aria-label="Main navigation">
         <button aria-label="Interviews" className={itemClass("interviews")} title={collapsed ? "Interviews" : undefined} type="button" onClick={() => onPageChange("interviews")}><ArchiveIcon /><span className={collapsed ? "md:hidden" : ""}>Interviews</span></button>
         <button aria-label="Question library" className={itemClass("questions")} title={collapsed ? "Question library" : undefined} type="button" onClick={() => onPageChange("questions")}><QuestionIcon /><span className={collapsed ? "md:hidden" : ""}>Question library</span></button>
-        <button aria-label="Practice" className={itemClass("practice")} title={collapsed ? "Practice" : undefined} type="button" onClick={() => onPageChange("practice")}><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Practice{practiceCount > 0 && <span className="float-right ml-5 rounded-full bg-white/15 px-2 py-0.5 text-[10px]">{practiceCount}</span>}</span></button>
+        <button aria-label="Preparation" className={itemClass("practice")} title={collapsed ? "Preparation" : undefined} type="button" onClick={() => onPageChange("practice")}><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Preparation{practiceCount > 0 && <span className="float-right ml-5 rounded-full bg-white/15 px-2 py-0.5 text-[10px]">{practiceCount}</span>}</span></button>
       </nav>
 
       <p className={`mt-auto hidden border-t border-white/20 px-2 pt-5 text-sm text-[#ECECEA] md:block ${collapsed ? "md:hidden" : ""}`}>A record of what you learned, one interview at a time.</p>

@@ -87,7 +87,7 @@ export function PracticePage({ interviews, isLoadingQuestions, questions, onBrow
       <PageHeader
         action={<button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => setIsCreateOpen(true)}>+ New prep interview</button>}
         description="Create a prep interview, collect its questions, and reveal saved answers when you are ready to compare."
-        eyebrow="Practice desk"
+        eyebrow="Preparation desk"
         title="Interview preparation"
       />
 
@@ -189,7 +189,7 @@ export function PracticePage({ interviews, isLoadingQuestions, questions, onBrow
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
           <form className="w-full max-w-lg rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void createInterview(); }}>
             <header className="border-b border-[#D6D6D2] pb-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Practice setup</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Preparation setup</p>
               <h2 className="mt-1 text-2xl font-bold text-[#202020]">New prep interview</h2>
             </header>
             {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{modalError}</p>}
@@ -221,7 +221,7 @@ export function PracticePage({ interviews, isLoadingQuestions, questions, onBrow
 
       {selectedQuestion && (
         <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
-          <section aria-label="Practice answer" aria-modal="true" className="w-full max-w-2xl rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" role="dialog">
+          <section aria-label="Preparation answer" aria-modal="true" className="w-full max-w-2xl rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" role="dialog">
             <header className="border-b border-[#D6D6D2] pb-4"><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Reference answer</p><h2 className="mt-2 text-xl font-bold leading-7 text-[#202020]">{selectedQuestion.question_text}</h2></header>
             {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{modalError}</p>}
             <label className="mt-5 grid gap-2 text-sm font-bold text-[#303030]">Answer<textarea autoFocus className="min-h-48 resize-y rounded-md border border-[#D6D6D2] px-4 py-3 font-normal leading-6 outline-none" placeholder="Write the answer you want to compare against during practice..." value={answerDraft} onChange={(event) => setAnswerDraft(event.target.value)} /></label>
