@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usesSupabase } from "../supabase";
 
 type WelcomeModalProps = {
   onClose: () => void;
@@ -39,14 +40,22 @@ const guideSteps = [
 
 export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const [stepIndex, setStepIndex] = useState(0);
-  const step = guideSteps[stepIndex];
-  const isLastStep = stepIndex === guideSteps.length - 1;
+  const steps = usesSupabase
+    ? [...guideSteps.slice(0, -1), {
+        eyebrow: "Your private account",
+        title: "Your workspace follows you",
+        description: "Your interviews, questions, preparation sets, and answers are saved to your private account and available whenever you sign in.",
+        points: ["Database access is limited to the signed-in user's records", "People using the shared link receive their own private workspace", "Open this guide again from “How it works” in the sidebar"],
+      }]
+    : guideSteps;
+  const step = steps[stepIndex];
+  const isLastStep = stepIndex === steps.length - 1;
 
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[#202020]/55 p-4 backdrop-blur-[2px] sm:p-6">
       <section aria-label="How i-Prep works" aria-modal="true" className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D6D6D2] bg-white shadow-[0_28px_80px_rgba(0,0,0,0.28)]" role="dialog">
         <div className="h-1.5 bg-[#E4E4E1]">
-          <div className="h-full bg-[#F5822A] transition-[width] duration-300" style={{ width: `${((stepIndex + 1) / guideSteps.length) * 100}%` }} />
+          <div className="h-full bg-[#F5822A] transition-[width] duration-300" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
         </div>
 
         <div className="px-6 pb-7 pt-6 sm:px-9 sm:pb-9 sm:pt-8">
@@ -70,7 +79,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
           </ul>
 
           <footer className="mt-7 flex items-center justify-between gap-4 border-t border-[#E4E4E1] pt-5">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#8A8A86]">{stepIndex + 1} of {guideSteps.length}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#8A8A86]">{stepIndex + 1} of {steps.length}</p>
             <div className="flex gap-2">
               {stepIndex > 0 && <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" type="button" onClick={() => setStepIndex((current) => current - 1)}>Back</button>}
               <button autoFocus className="rounded-md bg-[#F5822A] px-5 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => isLastStep ? onClose() : setStepIndex((current) => current + 1)}>{isLastStep ? "Start using i-Prep" : "Next"}</button>

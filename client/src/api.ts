@@ -1,4 +1,6 @@
 import { API_URL } from "./config";
+import { supabaseFetch } from "./supabaseApi";
+import { usesSupabase } from "./supabase";
 import type { Interview, PracticeInterview, PracticeQuestion, Question } from "./types";
 
 type BrowserStore = {
@@ -198,5 +200,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export function apiFetch(url: string, init?: RequestInit) {
+  const path = url.startsWith(API_URL) ? url.slice(API_URL.length) : new URL(url, window.location.origin).pathname;
+  if (usesSupabase) return supabaseFetch(path, init);
   return browserStorageEnabled ? browserFetch(url, init) : fetch(url, init);
 }

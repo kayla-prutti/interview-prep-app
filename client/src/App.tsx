@@ -41,7 +41,12 @@ import type {
   Question,
 } from "./types";
 
-function App() {
+type AppProps = {
+  accountEmail?: string;
+  onSignOut?: () => Promise<void>;
+};
+
+function App({ accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
   const [page, setPage] = useState<Page>("interviews");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -409,12 +414,14 @@ function App() {
   return (
     <div className={`flex h-[100dvh] w-full flex-col overflow-hidden bg-[#F4F4F2] text-[#202020] transition-[grid-template-columns] duration-200 md:grid ${isSidebarCollapsed ? "md:grid-cols-[76px_minmax(0,1fr)]" : "md:grid-cols-[238px_minmax(0,1fr)]"}`}>
       <Sidebar
+        accountEmail={accountEmail}
         activePage={page}
         collapsed={isSidebarCollapsed}
         practiceCount={practiceInterviews.length}
         onCollapseChange={setIsSidebarCollapsed}
         onPageChange={setPage}
         onShowGuide={() => setIsGuideOpen(true)}
+        onSignOut={onSignOut}
       />
 
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 pb-9 sm:px-9 md:pb-5 lg:px-10" id="top">

@@ -6,6 +6,19 @@ Live browser version: https://kayla-prutti.github.io/i-prep/
 
 The GitHub Pages build runs entirely in the browser and stores its data in that browser's local storage. It does not publish the local SQLite database.
 
+## Private cloud accounts
+
+The client also supports Supabase authentication and private cloud storage. Apply the migration in `supabase/migrations`, then build with:
+
+```bash
+VITE_STORAGE_MODE=supabase \
+VITE_SUPABASE_URL=https://your-project.supabase.co \
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key \
+npm --prefix client run build
+```
+
+Every stored row belongs to an authenticated user and is protected by Postgres Row Level Security. The one-time `npm run import:supabase` command creates or locates the target account and imports the local SQLite records into that account. Secret keys and passwords must remain in local environment variables and must never be included in a client build.
+
 ## Project layout
 
 ```text
