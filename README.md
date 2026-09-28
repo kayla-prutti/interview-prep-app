@@ -2,6 +2,8 @@
 
 i-Prep stores interview experiences and questions in a local SQLite database.
 
+Live browser version: https://kayla-prutti.github.io/i-prep/
+
 The GitHub Pages build runs entirely in the browser and stores its data in that browser's local storage. It does not publish the local SQLite database.
 
 ## Project layout
