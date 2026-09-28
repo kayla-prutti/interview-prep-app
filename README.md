@@ -1,10 +1,22 @@
 # i-Prep
 
-i-Prep stores interview experiences and questions in a local SQLite database.
+i-Prep is a private interview preparation library for recording interview experiences, collecting questions, and preparing answers in one organized place.
 
 Live browser version: https://kayla-prutti.github.io/i-prep/
 
-The GitHub Pages build runs entirely in the browser and stores its data in that browser's local storage. It does not publish the local SQLite database.
+The deployed app uses Supabase authentication and private cloud storage. Each user's records are linked to their account and protected by Row Level Security. The local development version can also use the SQLite database included in this repository.
+
+## Why I built i-Prep
+
+Preparing for interviews takes a lot of time, and I noticed that my notes were scattered across different places. Some were saved in Notes on my Mac, while others lived inside conversations with ChatGPT. Important questions, answers, and memories from past interviews were sometimes difficult to find, and occasionally I lost track of them completely.
+
+I created i-Prep to give that information a permanent home. I wanted it to feel like a personal library where I could preserve every interview experience, collect the questions I had been asked, and reuse what I learned when preparing for the next opportunity. Instead of starting over for every interview, I can return to an organized record that becomes more useful over time.
+
+## Design inspiration
+
+The visual theme is inspired by the gray, black, white, and orange colors in my university emblem. The interface also draws from traditional paper filing systems: folders used to store handwritten records, labeled tabs that separate topics, and sticky notes that make important information easy to find.
+
+This familiar library and archive style supports the purpose of the app. Interviews are stored as records, questions are organized into type-based folders, and preparation sets bring selected questions and answers together for practice.
 
 ## Private cloud accounts
 
