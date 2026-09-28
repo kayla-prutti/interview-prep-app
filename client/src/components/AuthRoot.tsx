@@ -78,7 +78,7 @@ export function AuthRoot({ children }: AuthRootProps) {
               {isSignUp && <PasswordField autoComplete="new-password" label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} />}
               <button className="mt-2 rounded-md bg-[#F5822A] px-4 py-3 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-60" disabled={isSubmitting} type="submit">{isSubmitting ? "Please wait..." : isSignUp ? "Create account" : "Sign in"}</button>
             </form>
-            <button className="mt-5 w-full text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsSignUp((current) => !current); setConfirmPassword(""); setError(""); setMessage(""); }}>{isSignUp ? "Already have an account? Sign in" : "New to i-Prep? Create an account"}</button>
+            <button className="mt-5 w-full text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsSignUp((current) => !current); setEmail(""); setPassword(""); setConfirmPassword(""); setError(""); setMessage(""); }}>{isSignUp ? "Already have an account? Sign in" : "New to i-Prep? Create an account"}</button>
           </div>
         </section>
       </main>
