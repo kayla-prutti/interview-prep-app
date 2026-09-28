@@ -491,7 +491,6 @@ function App() {
           </section>
         ) : (
           <PracticePage
-            activeInterviewId={activePracticeId}
             interviews={practiceInterviews}
             isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}

@@ -5,7 +5,6 @@ import { interviewerLabel } from "../../lib/interviews";
 import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion } from "../../types";
 
 type PracticePageProps = {
-  activeInterviewId: number | null;
   interviews: PracticeInterview[];
   isLoadingQuestions: boolean;
   questions: PracticeQuestion[];
@@ -23,7 +22,8 @@ const emptyPracticeForm: PracticeInterviewForm = {
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+  const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,6 +73,7 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
     setModalError("");
     try {
       await onDeleteInterview(interviewToDelete.id);
+      if (openInterviewId === interviewToDelete.id) setOpenInterviewId(null);
       setInterviewToDelete(null);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : "Could not delete the prep interview.");
@@ -99,7 +100,7 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
       ) : (
         <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pb-5">
             {interviews.map((interview) => {
-              const isOpen = interview.id === activeInterviewId;
+              const isOpen = interview.id === openInterviewId;
               return (
                 <article className={`overflow-hidden rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
                   <div className={`flex items-stretch transition ${isOpen ? "bg-[#FFF7F0]" : "hover:bg-[#FAFAF8]"}`}>
@@ -107,7 +108,11 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
                       aria-expanded={isOpen}
                       className="flex min-w-0 flex-1 items-center justify-between gap-5 px-5 py-5 text-left sm:px-6"
                       type="button"
-                      onClick={() => onSelectInterview(isOpen ? null : interview.id)}
+                      onClick={() => {
+                        const nextInterviewId = isOpen ? null : interview.id;
+                        setOpenInterviewId(nextInterviewId);
+                        onSelectInterview(nextInterviewId);
+                      }}
                     >
                       <span className="min-w-0">
                         <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">{interviewerLabel(interview.interviewer_type)} prep</span>
