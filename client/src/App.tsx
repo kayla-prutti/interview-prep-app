@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { apiFetch } from "./api";
 import { DataTable } from "./components/DataTable";
 import { FolderTabs, type FolderTab } from "./components/FolderTabs";
 import { BinIcon, PenIcon } from "./components/Icons";
@@ -74,7 +75,7 @@ function App() {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/interviews`);
+      const response = await apiFetch(`${API_URL}/interviews`);
       if (!response.ok) throw new Error("Could not load interviews.");
       setInterviews((await response.json()) as Interview[]);
     } catch (caughtError) {
@@ -89,7 +90,7 @@ function App() {
     setQuestionsError("");
 
     try {
-      const response = await fetch(`${API_URL}/questions`);
+      const response = await apiFetch(`${API_URL}/questions`);
       if (!response.ok) throw new Error("Could not load the question library.");
       setQuestions((await response.json()) as Question[]);
     } catch (caughtError) {
@@ -100,7 +101,7 @@ function App() {
   }
 
   async function loadPracticeInterviews() {
-    const response = await fetch(`${API_URL}/practice-interviews`);
+    const response = await apiFetch(`${API_URL}/practice-interviews`);
     if (!response.ok) throw new Error("Could not load prep interviews.");
     setPracticeInterviews((await response.json()) as PracticeInterview[]);
   }
@@ -108,7 +109,7 @@ function App() {
   async function loadPracticeQuestions(practiceInterviewId: number) {
     setArePracticeQuestionsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
+      const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
       if (!response.ok) throw new Error("Could not load practice questions.");
       setPracticeQuestions((await response.json()) as PracticeQuestion[]);
     } finally {
@@ -194,7 +195,7 @@ function App() {
     });
 
     try {
-      const response = await fetch(`${API_URL}/interviews/${interview.id}/questions`);
+      const response = await apiFetch(`${API_URL}/interviews/${interview.id}/questions`);
       if (!response.ok) throw new Error("Could not load this interview's questions.");
       setSelectedQuestions((await response.json()) as Question[]);
     } catch (caughtError) {
@@ -218,7 +219,7 @@ function App() {
     setDetailError("");
 
     try {
-      const response = await fetch(`${API_URL}/interviews/${selectedInterview.id}`, {
+      const response = await apiFetch(`${API_URL}/interviews/${selectedInterview.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
@@ -244,7 +245,7 @@ function App() {
     setDetailError("");
 
     try {
-      const response = await fetch(`${API_URL}/interviews/${selectedInterview.id}`, {
+      const response = await apiFetch(`${API_URL}/interviews/${selectedInterview.id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Could not delete interview.");
@@ -265,7 +266,7 @@ function App() {
 
     try {
       const { questions, ...interviewDetails } = form;
-      const response = await fetch(`${API_URL}/interviews`, {
+      const response = await apiFetch(`${API_URL}/interviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(interviewDetails),
@@ -282,7 +283,7 @@ function App() {
 
       await Promise.all(
         questionsToSave.map(async (question_text) => {
-          const questionResponse = await fetch(
+          const questionResponse = await apiFetch(
             `${API_URL}/interviews/${result.id}/questions`,
             {
               method: "POST",
@@ -321,7 +322,7 @@ function App() {
   }
 
   async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
-    const response = await fetch(`${API_URL}/practice-interviews`, {
+    const response = await apiFetch(`${API_URL}/practice-interviews`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(practiceForm),
@@ -334,7 +335,7 @@ function App() {
   }
 
   async function deletePracticeInterview(practiceInterviewId: number) {
-    const response = await fetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, { method: "DELETE" });
+    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not delete the prep interview.");
     setPracticeInterviews((current) => current.filter((interview) => interview.id !== practiceInterviewId));
     if (activePracticeId === practiceInterviewId) {
@@ -345,7 +346,7 @@ function App() {
 
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
-    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions`, {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source_question_id: questionId }),
@@ -357,7 +358,7 @@ function App() {
 
   async function savePracticeAnswer(practiceQuestionId: number, answer: string) {
     if (!activePracticeId) return;
-    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ answer }),
@@ -370,7 +371,7 @@ function App() {
 
   async function removePracticeQuestion(practiceQuestionId: number) {
     if (!activePracticeId) return;
-    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, { method: "DELETE" });
+    const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not remove the question from this prep interview.");
     setPracticeQuestions((current) => current.filter((question) => question.id !== practiceQuestionId));
     await loadPracticeInterviews();
