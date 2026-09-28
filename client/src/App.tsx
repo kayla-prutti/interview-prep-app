@@ -13,6 +13,7 @@ import { BinIcon, PenIcon } from "./components/Icons";
 import { PageHeader } from "./components/PageHeader";
 import { SearchField } from "./components/SearchField";
 import { Sidebar } from "./components/Sidebar";
+import { WelcomeModal } from "./components/WelcomeModal";
 import { API_URL } from "./config";
 import { interviewColumns } from "./features/interviews/columns";
 import type { InterviewGridContext } from "./features/interviews/types";
@@ -41,6 +42,7 @@ import type {
 } from "./types";
 
 function App() {
+  const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
   const [page, setPage] = useState<Page>("interviews");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeInterviewType, setActiveInterviewType] = useState<InterviewFilter>("all");
@@ -153,6 +155,11 @@ function App() {
   const practiceSourceQuestionIds = new Set(practiceQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null));
 
   const questionRows = form.questions ?? [""];
+
+  function closeGuide() {
+    localStorage.setItem("i-prep-guide-seen-v1", "true");
+    setIsGuideOpen(false);
+  }
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -407,6 +414,7 @@ function App() {
         practiceCount={practiceInterviews.length}
         onCollapseChange={setIsSidebarCollapsed}
         onPageChange={setPage}
+        onShowGuide={() => setIsGuideOpen(true)}
       />
 
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 pb-9 sm:px-9 md:pb-5 lg:px-10" id="top">
@@ -574,6 +582,8 @@ function App() {
           </form>
         </div>
       )}
+
+      {isGuideOpen && <WelcomeModal onClose={closeGuide} />}
 
       {selectedInterview && editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 sm:p-6">

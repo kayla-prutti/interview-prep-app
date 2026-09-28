@@ -7,9 +7,10 @@ type SidebarProps = {
   practiceCount: number;
   onCollapseChange: (collapsed: boolean) => void;
   onPageChange: (page: Page) => void;
+  onShowGuide: () => void;
 };
 
-export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange, onPageChange }: SidebarProps) {
+export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange, onPageChange, onShowGuide }: SidebarProps) {
   const itemClass = (page: Page) => `flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${collapsed ? "md:justify-center" : ""} ${activePage === page ? "bg-[#F5822A] font-semibold text-[#202020]" : "text-[#F4F4F2] hover:bg-black/10 hover:text-white"}`;
 
   return (
@@ -30,7 +31,13 @@ export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange
         <button aria-label="Preparation" className={itemClass("practice")} title={collapsed ? "Preparation" : undefined} type="button" onClick={() => onPageChange("practice")}><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Preparation{practiceCount > 0 && <span className="float-right ml-5 rounded-full bg-white/15 px-2 py-0.5 text-[10px]">{practiceCount}</span>}</span></button>
       </nav>
 
-      <p className={`mt-auto hidden border-t border-white/20 px-2 pt-5 text-sm text-[#ECECEA] md:block ${collapsed ? "md:hidden" : ""}`}>A record of what you learned, one interview at a time.</p>
+      <div className="mt-auto hidden border-t border-white/20 pt-4 md:block">
+        <button aria-label="How it works" className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm font-semibold text-[#F4F4F2] hover:bg-black/10 hover:text-white ${collapsed ? "justify-center" : ""}`} title="How it works" type="button" onClick={onShowGuide}>
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/40 text-xs font-bold">?</span>
+          <span className={collapsed ? "md:hidden" : ""}>How it works</span>
+        </button>
+        <p className={`mt-3 px-2 text-sm text-[#ECECEA] ${collapsed ? "md:hidden" : ""}`}>A record of what you learned, one interview at a time.</p>
+      </div>
     </aside>
   );
 }
