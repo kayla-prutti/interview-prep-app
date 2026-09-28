@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { interviewsRouter } from "./routes/interviews.js";
 import { questionsRouter } from "./routes/questions.js";
+import { practiceRouter } from "./routes/practice.js";
 
 export const app = express();
 
@@ -14,3 +15,4 @@ app.get("/", (_req, res) => {
 
 app.use("/interviews", interviewsRouter);
 app.use(questionsRouter);
+app.use("/practice-interviews", practiceRouter);

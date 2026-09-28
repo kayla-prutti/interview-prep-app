@@ -33,6 +33,9 @@ import type {
   InterviewForm,
   InterviewerType,
   Page,
+  PracticeInterview,
+  PracticeInterviewForm,
+  PracticeQuestion,
   Question,
 } from "./types";
 
@@ -45,14 +48,10 @@ function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionSearch, setQuestionSearch] = useState("");
   const [activeQuestionType, setActiveQuestionType] = useState<InterviewFilter>("all");
-  const [practiceQuestionIds, setPracticeQuestionIds] = useState<Set<number>>(() => {
-    try {
-      const savedIds = JSON.parse(localStorage.getItem("i-prep-practice-questions") ?? "[]") as number[];
-      return new Set(savedIds);
-    } catch {
-      return new Set();
-    }
-  });
+  const [practiceInterviews, setPracticeInterviews] = useState<PracticeInterview[]>([]);
+  const [activePracticeId, setActivePracticeId] = useState<number | null>(null);
+  const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
+  const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
   const [questionsError, setQuestionsError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -100,11 +99,29 @@ function App() {
     }
   }
 
+  async function loadPracticeInterviews() {
+    const response = await fetch(`${API_URL}/practice-interviews`);
+    if (!response.ok) throw new Error("Could not load prep interviews.");
+    setPracticeInterviews((await response.json()) as PracticeInterview[]);
+  }
+
+  async function loadPracticeQuestions(practiceInterviewId: number) {
+    setArePracticeQuestionsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
+      if (!response.ok) throw new Error("Could not load practice questions.");
+      setPracticeQuestions((await response.json()) as PracticeQuestion[]);
+    } finally {
+      setArePracticeQuestionsLoading(false);
+    }
+  }
+
   useEffect(() => {
     // Loading remote data on first render is the intended external synchronization.
     // oxlint-disable-next-line react/set-state-in-effect
     void loadInterviews();
     void loadQuestions();
+    void loadPracticeInterviews();
   }, []);
 
   const filteredInterviews = useMemo(() => {
@@ -132,7 +149,7 @@ function App() {
   const activeQuestions = activeQuestionType === "all"
     ? filteredQuestions
     : filteredQuestions.filter((question) => question.interviewer_type === activeQuestionType);
-  const practiceQuestions = questions.filter((question) => practiceQuestionIds.has(question.id));
+  const practiceSourceQuestionIds = new Set(practiceQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null));
 
   const questionRows = form.questions ?? [""];
 
@@ -297,19 +314,62 @@ function App() {
     onDelete: openDeleteConfirmation,
   };
 
-  function togglePracticeQuestion(questionId: number) {
-    setPracticeQuestionIds((current) => {
-      const next = new Set(current);
-      if (next.has(questionId)) next.delete(questionId);
-      else next.add(questionId);
-      localStorage.setItem("i-prep-practice-questions", JSON.stringify([...next]));
-      return next;
+  function selectPracticeInterview(practiceInterviewId: number) {
+    setActivePracticeId(practiceInterviewId);
+    setPracticeQuestions([]);
+    void loadPracticeQuestions(practiceInterviewId);
+  }
+
+  async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
+    const response = await fetch(`${API_URL}/practice-interviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(practiceForm),
     });
+    const result = (await response.json()) as PracticeInterview | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not create the prep interview.");
+    setPracticeInterviews((current) => [result, ...current]);
+    setActivePracticeId(result.id);
+    setPracticeQuestions([]);
+  }
+
+  async function addQuestionToPractice(questionId: number) {
+    if (!activePracticeId) return;
+    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_question_id: questionId }),
+    });
+    const result = (await response.json()) as PracticeQuestion | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not add the question.");
+    await Promise.all([loadPracticeQuestions(activePracticeId), loadPracticeInterviews()]);
+  }
+
+  async function savePracticeAnswer(practiceQuestionId: number, answer: string) {
+    if (!activePracticeId) return;
+    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer }),
+    });
+    const result = (await response.json()) as PracticeQuestion | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not save the answer.");
+    setPracticeQuestions((current) => current.map((question) => question.id === result.id ? { ...question, ...result } : question));
+    await loadPracticeInterviews();
+  }
+
+  async function removePracticeQuestion(practiceQuestionId: number) {
+    if (!activePracticeId) return;
+    const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Could not remove the question from this prep interview.");
+    setPracticeQuestions((current) => current.filter((question) => question.id !== practiceQuestionId));
+    await loadPracticeInterviews();
   }
 
   const questionGridContext: QuestionGridContext = {
-    isAddedToPractice: (questionId) => practiceQuestionIds.has(questionId),
-    onTogglePractice: togglePracticeQuestion,
+    canAddToPractice: activePracticeId !== null,
+    isAddedToPractice: (questionId) => practiceSourceQuestionIds.has(questionId),
+    onAddToPractice: (questionId) => void addQuestionToPractice(questionId).catch((caughtError) => setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not add the question.")),
   };
 
   const interviewTabs: FolderTab<InterviewFilter>[] = interviewSections.map((section) => ({
@@ -333,7 +393,7 @@ function App() {
       <Sidebar
         activePage={page}
         collapsed={isSidebarCollapsed}
-        practiceCount={practiceQuestions.length}
+        practiceCount={practiceInterviews.length}
         onCollapseChange={setIsSidebarCollapsed}
         onPageChange={setPage}
       />
@@ -383,6 +443,17 @@ function App() {
 
             <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={setQuestionSearch} onClear={() => setQuestionSearch("")} />
 
+            <div className="mt-4 flex max-w-2xl flex-col gap-2 rounded-lg border border-[#D6D6D2] bg-white px-4 py-3 sm:flex-row sm:items-center">
+              <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
+                <span className="shrink-0">Adding to</span>
+                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => { const value = Number(event.target.value); if (value) selectPracticeInterview(value); else { setActivePracticeId(null); setPracticeQuestions([]); } }}>
+                  <option value="">Select a prep interview</option>
+                  {practiceInterviews.map((interview) => <option key={interview.id} value={interview.id}>{interview.company} — {interview.role} ({interviewerLabel(interview.interviewer_type)})</option>)}
+                </select>
+              </label>
+              <button className="shrink-0 text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => setPage("practice")}>{practiceInterviews.length === 0 ? "+ Create prep interview" : "Manage prep interviews"}</button>
+            </div>
+
             {areQuestionsLoading && <p className="mt-6 border-y border-stone-300 py-5 text-sm text-stone-500">Opening the question library...</p>}
             {questionsError && <p className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{questionsError}</p>}
 
@@ -402,7 +473,7 @@ function App() {
                   {activeQuestions.length === 0 ? (
                     <p className="px-6 py-8 text-sm text-[#686868]">No matching questions in this folder.</p>
                   ) : (
-                    <DataTable columns={questionColumns} context={questionGridContext} refreshKey={practiceQuestionIds} rows={activeQuestions} />
+                    <DataTable columns={questionColumns} context={questionGridContext} refreshKey={[activePracticeId, ...practiceSourceQuestionIds].join("-")} rows={activeQuestions} />
                   )}
                 </section>
               </div>
@@ -410,9 +481,15 @@ function App() {
           </section>
         ) : (
           <PracticePage
+            activeInterviewId={activePracticeId}
+            interviews={practiceInterviews}
+            isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}
             onBrowseQuestions={() => setPage("questions")}
-            onRemoveQuestion={togglePracticeQuestion}
+            onCreateInterview={createPracticeInterview}
+            onRemoveQuestion={removePracticeQuestion}
+            onSaveAnswer={savePracticeAnswer}
+            onSelectInterview={selectPracticeInterview}
           />
         )}
       </main>

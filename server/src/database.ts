@@ -118,6 +118,35 @@ db.exec(`
     )
     WHERE id = NEW.id;
   END;
+
+  CREATE TABLE IF NOT EXISTS practice_interviews (
+    id INTEGER PRIMARY KEY,
+    company TEXT NOT NULL,
+    role TEXT NOT NULL,
+    interviewer_type TEXT NOT NULL CHECK (
+      interviewer_type IN ('recruiter', 'hiring_manager', 'technical')
+    ),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS practice_questions (
+    id INTEGER PRIMARY KEY,
+    practice_interview_id INTEGER NOT NULL,
+    source_question_id INTEGER,
+    question_text TEXT NOT NULL,
+    answer TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (practice_interview_id)
+      REFERENCES practice_interviews(id)
+      ON DELETE CASCADE,
+    FOREIGN KEY (source_question_id)
+      REFERENCES questions(id)
+      ON DELETE SET NULL,
+    UNIQUE (practice_interview_id, source_question_id)
+  );
 `);
 
 export default db;

@@ -17,6 +17,7 @@ server/src/
   lib/validation.ts      Request validation helpers
   routes/interviews.ts   Interview endpoints
   routes/questions.ts    Question endpoints
+  routes/practice.ts     Prep interview, practice question, and answer endpoints
   app.ts                 Express middleware and route registration
   database.ts            SQLite connection, schema, and migrations
   server.ts              Server startup only
