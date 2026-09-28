@@ -333,6 +333,16 @@ function App() {
     setPracticeQuestions([]);
   }
 
+  async function deletePracticeInterview(practiceInterviewId: number) {
+    const response = await fetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Could not delete the prep interview.");
+    setPracticeInterviews((current) => current.filter((interview) => interview.id !== practiceInterviewId));
+    if (activePracticeId === practiceInterviewId) {
+      setActivePracticeId(null);
+      setPracticeQuestions([]);
+    }
+  }
+
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
     const response = await fetch(`${API_URL}/practice-interviews/${activePracticeId}/questions`, {
@@ -490,6 +500,7 @@ function App() {
               setPage("questions");
             }}
             onCreateInterview={createPracticeInterview}
+            onDeleteInterview={deletePracticeInterview}
             onRemoveQuestion={removePracticeQuestion}
             onSaveAnswer={savePracticeAnswer}
             onSelectInterview={selectPracticeInterview}

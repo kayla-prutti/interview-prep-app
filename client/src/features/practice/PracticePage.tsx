@@ -11,6 +11,7 @@ type PracticePageProps = {
   questions: PracticeQuestion[];
   onBrowseQuestions: (interviewId: number) => void;
   onCreateInterview: (form: PracticeInterviewForm) => Promise<void>;
+  onDeleteInterview: (interviewId: number) => Promise<void>;
   onRemoveQuestion: (questionId: number) => Promise<void>;
   onSaveAnswer: (questionId: number, answer: string) => Promise<void>;
   onSelectInterview: (interviewId: number | null) => void;
@@ -22,11 +23,13 @@ const emptyPracticeForm: PracticeInterviewForm = {
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [modalError, setModalError] = useState("");
+  const [interviewToDelete, setInterviewToDelete] = useState<PracticeInterview | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<PracticeQuestion | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
 
@@ -64,6 +67,20 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
     }
   }
 
+  async function deleteInterview() {
+    if (!interviewToDelete) return;
+    setIsDeleting(true);
+    setModalError("");
+    try {
+      await onDeleteInterview(interviewToDelete.id);
+      setInterviewToDelete(null);
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : "Could not delete the prep interview.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="practice">
       <PageHeader
@@ -85,27 +102,30 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
               const isOpen = interview.id === activeInterviewId;
               return (
                 <article className={`overflow-hidden rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
-                  <button
-                    aria-expanded={isOpen}
-                    className={`flex w-full items-center justify-between gap-5 px-5 py-5 text-left transition sm:px-6 ${isOpen ? "bg-[#FFF7F0]" : "hover:bg-[#FAFAF8]"}`}
-                    type="button"
-                    onClick={() => onSelectInterview(isOpen ? null : interview.id)}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">{interviewerLabel(interview.interviewer_type)} prep</span>
-                      <span className="mt-1 block truncate text-xl font-bold text-[#202020]">{interview.company}</span>
-                      <span className="mt-0.5 block truncate text-sm text-[#686868]">{interview.role}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-4">
-                      <span className="hidden text-right sm:block">
-                        <span className="block text-sm font-bold text-[#303030]">{interview.question_count} {interview.question_count === 1 ? "question" : "questions"}</span>
-                        <span className="mt-0.5 block text-xs text-[#686868]">{interview.answered_count} answered</span>
+                  <div className={`flex items-stretch transition ${isOpen ? "bg-[#FFF7F0]" : "hover:bg-[#FAFAF8]"}`}>
+                    <button
+                      aria-expanded={isOpen}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-5 px-5 py-5 text-left sm:px-6"
+                      type="button"
+                      onClick={() => onSelectInterview(isOpen ? null : interview.id)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">{interviewerLabel(interview.interviewer_type)} prep</span>
+                        <span className="mt-1 block truncate text-xl font-bold text-[#202020]">{interview.company}</span>
+                        <span className="mt-0.5 block truncate text-sm text-[#686868]">{interview.role}</span>
                       </span>
-                      <svg aria-hidden="true" className={`h-5 w-5 text-[#686868] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24">
-                        <path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                      </svg>
-                    </span>
-                  </button>
+                      <span className="flex shrink-0 items-center gap-4">
+                        <span className="hidden text-right sm:block">
+                          <span className="block text-sm font-bold text-[#303030]">{interview.question_count} {interview.question_count === 1 ? "question" : "questions"}</span>
+                          <span className="mt-0.5 block text-xs text-[#686868]">{interview.answered_count} answered</span>
+                        </span>
+                        <svg aria-hidden="true" className={`h-5 w-5 text-[#686868] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24">
+                          <path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                        </svg>
+                      </span>
+                    </button>
+                    <button aria-label={`Delete ${interview.company} prep interview`} className="my-4 mr-4 grid h-10 w-10 shrink-0 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Delete prep interview" type="button" onClick={() => { setModalError(""); setInterviewToDelete(interview); }}><BinIcon /></button>
+                  </div>
 
                   {isOpen && (
                     <div className="border-t border-[#D6D6D2]">
@@ -176,6 +196,21 @@ export function PracticePage({ activeInterviewId, interviews, isLoadingQuestions
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-60" disabled={isSaving} type="submit">{isSaving ? "Creating..." : "Create prep interview"}</button>
             </footer>
           </form>
+        </div>
+      )}
+
+      {interviewToDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
+          <section aria-label="Delete prep interview" aria-modal="true" className="w-full max-w-md rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" role="dialog">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-700">Delete prep interview</p>
+            <h2 className="mt-2 text-2xl font-bold text-[#202020]">Delete {interviewToDelete.company}?</h2>
+            <p className="mt-3 text-sm leading-6 text-[#686868]">This will remove the prep interview, its selected questions, and its saved answers.</p>
+            {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{modalError}</p>}
+            <footer className="mt-6 flex justify-end gap-3">
+              <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" disabled={isDeleting} type="button" onClick={() => setInterviewToDelete(null)}>Cancel</button>
+              <button className="rounded-md bg-red-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-60" disabled={isDeleting} type="button" onClick={() => void deleteInterview()}>{isDeleting ? "Deleting..." : "Delete prep interview"}</button>
+            </footer>
+          </section>
         </div>
       )}
 
