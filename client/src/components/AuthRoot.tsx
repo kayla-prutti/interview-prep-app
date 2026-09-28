@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase, usesSupabase } from "../supabase";
+import { PasswordField } from "./PasswordField";
 
 type AuthRootProps = {
   children: (account: { email: string; signOut: () => Promise<void> } | null) => ReactNode;
@@ -12,6 +13,7 @@ export function AuthRoot({ children }: AuthRootProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,9 +42,13 @@ export function AuthRoot({ children }: AuthRootProps) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
     setError("");
     setMessage("");
+    if (isSignUp && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setIsSubmitting(true);
     const confirmationUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
     const result = isSignUp
       ? await authClient.auth.signUp({ email, password, options: { emailRedirectTo: confirmationUrl } })
@@ -68,10 +74,11 @@ export function AuthRoot({ children }: AuthRootProps) {
             {message && <p className="mt-5 rounded-md bg-green-50 p-3 text-sm text-green-800">{message}</p>}
             <form className="mt-6 grid gap-4" onSubmit={(event) => void submit(event)}>
               <label className="grid gap-1.5 text-sm font-bold text-[#303030]">Email<input autoComplete="email" className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-              <label className="grid gap-1.5 text-sm font-bold text-[#303030]">Password<input autoComplete={isSignUp ? "new-password" : "current-password"} className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" minLength={8} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+              <PasswordField autoComplete={isSignUp ? "new-password" : "current-password"} label="Password" value={password} onChange={setPassword} />
+              {isSignUp && <PasswordField autoComplete="new-password" label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} />}
               <button className="mt-2 rounded-md bg-[#F5822A] px-4 py-3 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-60" disabled={isSubmitting} type="submit">{isSubmitting ? "Please wait..." : isSignUp ? "Create account" : "Sign in"}</button>
             </form>
-            <button className="mt-5 w-full text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsSignUp((current) => !current); setError(""); setMessage(""); }}>{isSignUp ? "Already have an account? Sign in" : "New to i-Prep? Create an account"}</button>
+            <button className="mt-5 w-full text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsSignUp((current) => !current); setConfirmPassword(""); setError(""); setMessage(""); }}>{isSignUp ? "Already have an account? Sign in" : "New to i-Prep? Create an account"}</button>
           </div>
         </section>
       </main>
