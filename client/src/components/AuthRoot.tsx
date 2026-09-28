@@ -43,8 +43,9 @@ export function AuthRoot({ children }: AuthRootProps) {
     setIsSubmitting(true);
     setError("");
     setMessage("");
+    const confirmationUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
     const result = isSignUp
-      ? await authClient.auth.signUp({ email, password })
+      ? await authClient.auth.signUp({ email, password, options: { emailRedirectTo: confirmationUrl } })
       : await authClient.auth.signInWithPassword({ email, password });
     if (result.error) setError(result.error.message);
     else if (isSignUp && !result.data.session) setMessage("Check your email to confirm your account, then sign in.");
