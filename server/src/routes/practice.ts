@@ -4,7 +4,15 @@ import { interviewerTypes, positiveId, type InterviewerType } from "../lib/valid
 
 export const practiceRouter = Router();
 
-practiceRouter.get("/", (_req, res) => {
+practiceRouter.get("/", (req, res) => {
+  if (req.query.view === "options") {
+    res.json(db.prepare(`
+      SELECT practice_interviews.*, 0 AS question_count, 0 AS answered_count
+      FROM practice_interviews
+      ORDER BY updated_at DESC, id DESC
+    `).all());
+    return;
+  }
   const interviews = db.prepare(`
     SELECT
       practice_interviews.*,
@@ -17,6 +25,13 @@ practiceRouter.get("/", (_req, res) => {
     ORDER BY practice_interviews.updated_at DESC, practice_interviews.id DESC
   `).all();
   res.json(interviews);
+});
+
+practiceRouter.get("/:practiceInterviewId/question-ids", (req, res) => {
+  const practiceInterviewId = positiveId(req.params.practiceInterviewId);
+  if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
+  const questions = db.prepare("SELECT source_question_id FROM practice_questions WHERE practice_interview_id = ? AND source_question_id IS NOT NULL").all(practiceInterviewId) as { source_question_id: number }[];
+  res.json(questions.map((question) => question.source_question_id));
 });
 
 practiceRouter.post("/", (req, res) => {

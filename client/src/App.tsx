@@ -76,6 +76,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [practiceInterviews, setPracticeInterviews] = useState<PracticeInterview[]>([]);
   const [activePracticeId, setActivePracticeId] = useState<number | null>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
+  const [practiceSourceQuestionIds, setPracticeSourceQuestionIds] = useState<Set<number>>(() => new Set());
   const [pendingPracticeAdds, setPendingPracticeAdds] = useState<Set<string>>(() => new Set());
   const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
@@ -99,8 +100,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
   const questionPageCache = useRef(new PageCache<PagedResult<Question>>());
-  const practiceInterviewsLoaded = useRef(false);
-  const practiceInterviewsRequest = useRef<Promise<void> | null>(null);
+  const practiceOptionsLoaded = useRef(false);
+  const practiceSummariesLoaded = useRef(false);
+  const practiceOptionsRequest = useRef<Promise<void> | null>(null);
+  const practiceSummariesRequest = useRef<Promise<void> | null>(null);
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
@@ -169,19 +172,22 @@ function App({ accountEmail, onSignOut }: AppProps) {
     }
   }, [activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
 
-  const loadPracticeInterviews = useCallback(async () => {
-    if (practiceInterviewsRequest.current) return practiceInterviewsRequest.current;
+  const loadPracticeInterviews = useCallback(async (view: "options" | "summary" = "summary") => {
+    const requestRef = view === "options" ? practiceOptionsRequest : practiceSummariesRequest;
+    if (requestRef.current) return requestRef.current;
     const request = (async () => {
-      const response = await apiFetch(`${API_URL}/practice-interviews`);
+      const parameters = view === "options" ? "?view=options" : "";
+      const response = await apiFetch(`${API_URL}/practice-interviews${parameters}`);
       if (!response.ok) throw new Error("Could not load prep interviews.");
       setPracticeInterviews((await response.json()) as PracticeInterview[]);
-      practiceInterviewsLoaded.current = true;
+      practiceOptionsLoaded.current = true;
+      if (view === "summary") practiceSummariesLoaded.current = true;
     })();
-    practiceInterviewsRequest.current = request;
+    requestRef.current = request;
     try {
       await request;
     } finally {
-      if (practiceInterviewsRequest.current === request) practiceInterviewsRequest.current = null;
+      if (requestRef.current === request) requestRef.current = null;
     }
   }, []);
 
@@ -190,15 +196,28 @@ function App({ accountEmail, onSignOut }: AppProps) {
     try {
       const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
       if (!response.ok) throw new Error("Could not load practice questions.");
-      setPracticeQuestions((await response.json()) as PracticeQuestion[]);
+      const loadedQuestions = (await response.json()) as PracticeQuestion[];
+      setPracticeQuestions(loadedQuestions);
+      setPracticeSourceQuestionIds(new Set(loadedQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null)));
     } finally {
       setArePracticeQuestionsLoading(false);
     }
   }, []);
 
+  const loadPracticeQuestionIds = useCallback(async (practiceInterviewId: number) => {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/question-ids`);
+    if (!response.ok) throw new Error("Could not load selected practice questions.");
+    setPracticeSourceQuestionIds(new Set((await response.json()) as number[]));
+  }, []);
+
   useEffect(() => {
-    if (page === "interviews" || practiceInterviewsLoaded.current) return;
-    // Prep data is loaded only when Question Library or Preparation needs it.
+    if (page === "questions" && !practiceOptionsLoaded.current) {
+      // Question Library only needs the lightweight list used by its prep selector.
+      // oxlint-disable-next-line react/set-state-in-effect
+      void loadPracticeInterviews("options");
+    }
+    if (page !== "practice" || practiceSummariesLoaded.current) return;
+    // Preparation loads question and answer totals for its cards.
     // oxlint-disable-next-line react/set-state-in-effect
     void loadPracticeInterviews();
   }, [loadPracticeInterviews, page]);
@@ -220,8 +239,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const activeInterviewSection = interviewSections.find((section) => section.type === activeInterviewType) ?? interviewSections[0];
 
   const activeQuestionSection = questionLibrarySections.find((section) => section.type === activeQuestionType) ?? questionLibrarySections[0];
-  const practiceSourceQuestionIds = new Set(practiceQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null));
-
   const questionRows = form.questions ?? [""];
   const canSaveInterview = form.company.trim() !== ""
     && form.role.trim() !== ""
@@ -451,7 +468,15 @@ function App({ accountEmail, onSignOut }: AppProps) {
   function selectPracticeInterview(practiceInterviewId: number | null) {
     setActivePracticeId(practiceInterviewId);
     setPracticeQuestions([]);
+    setPracticeSourceQuestionIds(new Set());
     if (practiceInterviewId) void loadPracticeQuestions(practiceInterviewId);
+  }
+
+  function selectPracticeInterviewForLibrary(practiceInterviewId: number | null) {
+    setActivePracticeId(practiceInterviewId);
+    setPracticeQuestions([]);
+    setPracticeSourceQuestionIds(new Set());
+    if (practiceInterviewId) void loadPracticeQuestionIds(practiceInterviewId);
   }
 
   async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
@@ -465,6 +490,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setPracticeInterviews((current) => [result, ...current]);
     setActivePracticeId(result.id);
     setPracticeQuestions([]);
+    setPracticeSourceQuestionIds(new Set());
   }
 
   async function deletePracticeInterview(practiceInterviewId: number) {
@@ -474,6 +500,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     if (activePracticeId === practiceInterviewId) {
       setActivePracticeId(null);
       setPracticeQuestions([]);
+      setPracticeSourceQuestionIds(new Set());
     }
   }
 
@@ -493,7 +520,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       });
       const result = (await response.json()) as PracticeQuestion | { error: string };
       if (response.status !== 409 && (!response.ok || "error" in result)) throw new Error("error" in result ? result.error : "Could not add the question.");
-      await Promise.all([loadPracticeQuestions(practiceInterviewId), loadPracticeInterviews()]);
+      setPracticeSourceQuestionIds((current) => new Set(current).add(questionId));
+      practiceSummariesLoaded.current = false;
     } finally {
       pendingPracticeAddsRef.current.delete(pendingKey);
       setPendingPracticeAdds(new Set(pendingPracticeAddsRef.current));
@@ -515,9 +543,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   async function removePracticeQuestion(practiceQuestionId: number) {
     if (!activePracticeId) return;
+    const removedSourceId = practiceQuestions.find((question) => question.id === practiceQuestionId)?.source_question_id;
     const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not remove the question from this prep interview.");
     setPracticeQuestions((current) => current.filter((question) => question.id !== practiceQuestionId));
+    if (removedSourceId !== null && removedSourceId !== undefined) setPracticeSourceQuestionIds((current) => new Set([...current].filter((id) => id !== removedSourceId)));
     await loadPracticeInterviews();
   }
 
@@ -602,7 +632,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             <div className="mt-4 flex max-w-2xl flex-col gap-2 rounded-lg border border-[#D6D6D2] bg-white px-4 py-3 sm:flex-row sm:items-center">
               <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
                 <span className="shrink-0">Adding to</span>
-                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => selectPracticeInterview(Number(event.target.value) || null)}>
+                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => selectPracticeInterviewForLibrary(Number(event.target.value) || null)}>
                   <option value="">Select a prep interview</option>
                   {practiceInterviews.map((interview) => <option key={interview.id} value={interview.id}>{interview.company} — {interview.role} ({interviewerLabel(interview.interviewer_type)})</option>)}
                 </select>
@@ -642,7 +672,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}
             onBrowseQuestions={(interviewId) => {
-              selectPracticeInterview(interviewId);
+              selectPracticeInterviewForLibrary(interviewId);
               setPage("questions");
             }}
             onCreateInterview={createPracticeInterview}

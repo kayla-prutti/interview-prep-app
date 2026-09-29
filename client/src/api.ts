@@ -115,7 +115,10 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       total: matchingRows.length,
     }));
   }
-  if (path === "/practice-interviews" && method === "GET") return Promise.resolve(json(practiceInterviews(store)));
+  if (path === "/practice-interviews" && method === "GET") {
+    if (query.get("view") === "options") return Promise.resolve(json(practiceInterviews(store).map((interview) => ({ ...interview, question_count: 0, answered_count: 0 }))));
+    return Promise.resolve(json(practiceInterviews(store)));
+  }
   if (path === "/practice-interviews" && method === "POST") {
     const input = bodyOf(init);
     const interview: PracticeInterview = {
@@ -199,6 +202,14 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     store.practiceQuestions = store.practiceQuestions.filter((question) => question.practice_interview_id !== id);
     writeStore(store);
     return Promise.resolve(new Response(null, { status: 204 }));
+  }
+
+  match = path.match(/^\/practice-interviews\/(\d+)\/question-ids$/);
+  if (match && method === "GET") {
+    const practiceInterviewId = Number(match[1]);
+    return Promise.resolve(json(store.practiceQuestions
+      .filter((question) => question.practice_interview_id === practiceInterviewId && question.source_question_id !== null)
+      .map((question) => question.source_question_id)));
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)\/questions$/);

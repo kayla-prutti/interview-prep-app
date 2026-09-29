@@ -108,6 +108,14 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     return json(questions);
   }
   if (routePath === "/practice-interviews" && method === "GET") {
+    if (query.get("view") === "options") {
+      const { data, error } = await supabase
+        .from("practice_interviews")
+        .select("id, company, role, interviewer_type, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .order("id", { ascending: false });
+      return error ? failure(error.message, errorStatus(error.code)) : json((data ?? []).map((interview) => ({ ...interview, question_count: 0, answered_count: 0 })));
+    }
     const { data, error } = await supabase
       .from("practice_interviews")
       .select("id, company, role, interviewer_type, created_at, updated_at, practice_questions(id, answer)")
@@ -171,6 +179,16 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   if (match && method === "DELETE") {
     const { error } = await supabase.from("practice_interviews").delete().eq("id", Number(match[1]));
     return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
+  }
+
+  match = routePath.match(/^\/practice-interviews\/(\d+)\/question-ids$/);
+  if (match && method === "GET") {
+    const { data, error } = await supabase
+      .from("practice_questions")
+      .select("source_question_id")
+      .eq("practice_interview_id", Number(match[1]));
+    if (error) return failure(error.message, errorStatus(error.code));
+    return json((data ?? []).map((question) => question.source_question_id).filter((id): id is number => id !== null));
   }
 
   match = routePath.match(/^\/practice-interviews\/(\d+)\/questions$/);
