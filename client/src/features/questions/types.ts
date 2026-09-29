@@ -3,4 +3,5 @@ export type QuestionGridContext = {
   isAddedToPractice: (questionId: number) => boolean;
   isAddingToPractice: (questionId: number) => boolean;
   onAddToPractice: (questionId: number) => void;
+  onChoosePractice: () => void;
 };
