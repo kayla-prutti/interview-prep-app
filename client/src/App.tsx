@@ -56,7 +56,7 @@ type EditableInterviewQuestion = {
 };
 
 type TypeCounts = Record<InterviewFilter, number>;
-type PagedResult<Item> = { items: Item[]; total: number; counts: TypeCounts };
+type PagedResult<Item> = { items: Item[]; total: number; counts?: TypeCounts };
 const emptyTypeCounts: TypeCounts = { all: 0, recruiter: 0, hiring_manager: 0, technical: 0 };
 
 function App({ accountEmail, onSignOut }: AppProps) {
@@ -103,6 +103,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
   const questionPageCache = useRef(new PageCache<PagedResult<Question>>());
+  const interviewCountCache = useRef(new Map<string, TypeCounts>());
+  const questionCountCache = useRef(new Map<string, TypeCounts>());
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
@@ -110,11 +112,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const loadInterviews = useCallback(async () => {
     const requestId = ++interviewRequest.current;
     const cacheKey = createPageCacheKey({ page: interviewPage, pageSize: interviewPageSize, search: debouncedSearch, type: activeInterviewType });
+    const countKey = debouncedSearch.trim().toLowerCase();
+    const cachedCounts = interviewCountCache.current.get(countKey);
     const cached = interviewPageCache.current.get(cacheKey);
     if (cached) {
       setInterviews(cached.items);
       setInterviewTotal(cached.total);
-      setInterviewCounts(cached.counts);
+      setInterviewCounts(cached.counts ?? cachedCounts ?? emptyTypeCounts);
       setError("");
       setIsLoading(false);
       return;
@@ -123,7 +127,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setIsLoading(true);
     setError("");
     try {
-      const parameters = new URLSearchParams({ offset: String(interviewPage * interviewPageSize), limit: String(interviewPageSize), search: debouncedSearch, type: activeInterviewType });
+      const parameters = new URLSearchParams({ offset: String(interviewPage * interviewPageSize), limit: String(interviewPageSize), search: debouncedSearch, type: activeInterviewType, includeCounts: String(!cachedCounts) });
       const result = await interviewPageCache.current.load(cacheKey, async () => {
         const response = await apiFetch(`${API_URL}/interviews/page?${parameters}`);
         if (!response.ok) throw new Error("Could not load interviews.");
@@ -132,7 +136,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId !== interviewRequest.current) return;
       setInterviews(result.items);
       setInterviewTotal(result.total);
-      setInterviewCounts(result.counts);
+      if (result.counts) interviewCountCache.current.set(countKey, result.counts);
+      setInterviewCounts(result.counts ?? cachedCounts ?? emptyTypeCounts);
     } catch (caughtError) {
       if (requestId !== interviewRequest.current) return;
       setError(caughtError instanceof Error ? caughtError.message : "Could not load interviews.");
@@ -144,11 +149,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const loadQuestions = useCallback(async () => {
     const requestId = ++questionRequest.current;
     const cacheKey = createPageCacheKey({ page: questionPage, pageSize: questionPageSize, search: debouncedQuestionSearch, type: activeQuestionType });
+    const countKey = debouncedQuestionSearch.trim().toLowerCase();
+    const cachedCounts = questionCountCache.current.get(countKey);
     const cached = questionPageCache.current.get(cacheKey);
     if (cached) {
       setQuestions(cached.items);
       setQuestionTotal(cached.total);
-      setQuestionCounts(cached.counts);
+      setQuestionCounts(cached.counts ?? cachedCounts ?? emptyTypeCounts);
       setQuestionsError("");
       setAreQuestionsLoading(false);
       return;
@@ -157,7 +164,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setAreQuestionsLoading(true);
     setQuestionsError("");
     try {
-      const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType });
+      const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType, includeCounts: String(!cachedCounts) });
       const result = await questionPageCache.current.load(cacheKey, async () => {
         const response = await apiFetch(`${API_URL}/questions/page?${parameters}`);
         if (!response.ok) throw new Error("Could not load the question library.");
@@ -166,7 +173,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId !== questionRequest.current) return;
       setQuestions(result.items);
       setQuestionTotal(result.total);
-      setQuestionCounts(result.counts);
+      if (result.counts) questionCountCache.current.set(countKey, result.counts);
+      setQuestionCounts(result.counts ?? cachedCounts ?? emptyTypeCounts);
     } catch (caughtError) {
       if (requestId !== questionRequest.current) return;
       setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load the question library.");
@@ -353,6 +361,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setIsEditingDetail(false);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
+      interviewCountCache.current.clear();
+      questionCountCache.current.clear();
       void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not update interview.");
@@ -378,6 +388,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setSelectedInterview(null);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
+      interviewCountCache.current.clear();
+      questionCountCache.current.clear();
       if (interviewPage === 0) void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not delete interview.");
@@ -429,6 +441,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setIsModalOpen(false);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
+      interviewCountCache.current.clear();
+      questionCountCache.current.clear();
       if (interviewPage === 0) void loadInterviews();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Could not save interview.");
