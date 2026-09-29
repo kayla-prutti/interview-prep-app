@@ -77,6 +77,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [activePracticeId, setActivePracticeId] = useState<number | null>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [practiceSourceQuestionIds, setPracticeSourceQuestionIds] = useState<Set<number>>(() => new Set());
+  const [isPracticePickerOpen, setIsPracticePickerOpen] = useState(false);
+  const [arePracticeOptionsLoaded, setArePracticeOptionsLoaded] = useState(false);
   const [pendingPracticeAdds, setPendingPracticeAdds] = useState<Set<string>>(() => new Set());
   const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
@@ -181,6 +183,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (!response.ok) throw new Error("Could not load prep interviews.");
       setPracticeInterviews((await response.json()) as PracticeInterview[]);
       practiceOptionsLoaded.current = true;
+      setArePracticeOptionsLoaded(true);
       if (view === "summary") practiceSummariesLoaded.current = true;
     })();
     requestRef.current = request;
@@ -211,11 +214,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (page === "questions" && !practiceOptionsLoaded.current) {
-      // Question Library only needs the lightweight list used by its prep selector.
-      // oxlint-disable-next-line react/set-state-in-effect
-      void loadPracticeInterviews("options");
-    }
     if (page !== "practice" || practiceSummariesLoaded.current) return;
     // Preparation loads question and answer totals for its cards.
     // oxlint-disable-next-line react/set-state-in-effect
@@ -473,10 +471,25 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }
 
   function selectPracticeInterviewForLibrary(practiceInterviewId: number | null) {
+    setIsPracticePickerOpen(false);
     setActivePracticeId(practiceInterviewId);
     setPracticeQuestions([]);
     setPracticeSourceQuestionIds(new Set());
     if (practiceInterviewId) void loadPracticeQuestionIds(practiceInterviewId);
+  }
+
+  async function togglePracticePicker() {
+    if (isPracticePickerOpen) {
+      setIsPracticePickerOpen(false);
+      return;
+    }
+    setIsPracticePickerOpen(true);
+    if (practiceOptionsLoaded.current) return;
+    try {
+      await loadPracticeInterviews("options");
+    } catch (caughtError) {
+      setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load prep interviews.");
+    }
   }
 
   async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
@@ -568,6 +581,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
     label: section.title,
   }));
 
+  const activePracticeInterview = practiceInterviews.find((interview) => interview.id === activePracticeId);
+
   const accountControl = accountEmail && onSignOut
     ? <AccountMenu email={accountEmail} onLogOut={onSignOut} />
     : undefined;
@@ -630,14 +645,25 @@ function App({ accountEmail, onSignOut }: AppProps) {
             <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={(value) => { setQuestionSearch(value); setQuestionPage(0); }} onClear={() => { setQuestionSearch(""); setQuestionPage(0); }} />
 
             <div className="mt-4 flex max-w-2xl flex-col gap-2 rounded-lg border border-[#D6D6D2] bg-white px-4 py-3 sm:flex-row sm:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
+              <div className="relative flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
                 <span className="shrink-0">Adding to</span>
-                <select className="min-w-0 flex-1 rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 font-normal outline-none" value={activePracticeId ?? ""} onChange={(event) => selectPracticeInterviewForLibrary(Number(event.target.value) || null)}>
-                  <option value="">Select a prep interview</option>
-                  {practiceInterviews.map((interview) => <option key={interview.id} value={interview.id}>{interview.company} — {interview.role} ({interviewerLabel(interview.interviewer_type)})</option>)}
-                </select>
-              </label>
-              <button className="shrink-0 text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => setPage("practice")}>{practiceInterviews.length === 0 ? "+ Create prep interview" : "Manage prep interviews"}</button>
+                <button aria-expanded={isPracticePickerOpen} className="min-w-0 flex-1 cursor-pointer rounded-md border border-[#D6D6D2] bg-[#FAFAF8] px-3 py-2 text-left font-normal outline-none hover:border-[#F5822A] hover:shadow-[0_0_0_2px_#FFE4D1]" type="button" onClick={() => void togglePracticePicker()}>
+                  {activePracticeInterview ? `${activePracticeInterview.company} — ${activePracticeInterview.role}` : "Select a prep interview"}
+                </button>
+                {isPracticePickerOpen && (
+                  <div className="absolute left-[82px] right-0 top-full z-40 mt-1 max-h-64 overflow-y-auto rounded-md border border-[#BDBDB8] bg-white p-1 shadow-xl">
+                    {!arePracticeOptionsLoaded && <p className="px-3 py-2 font-normal text-[#686868]">Loading prep interviews...</p>}
+                    {arePracticeOptionsLoaded && practiceInterviews.length === 0 && <p className="px-3 py-2 font-normal text-[#686868]">No prep interviews yet.</p>}
+                    {practiceInterviews.map((interview) => (
+                      <button className="block w-full cursor-pointer rounded px-3 py-2 text-left font-normal hover:bg-[#FFF0E5]" key={interview.id} type="button" onClick={() => selectPracticeInterviewForLibrary(interview.id)}>
+                        <span className="block font-bold">{interview.company} — {interview.role}</span>
+                        <span className="text-xs text-[#686868]">{interviewerLabel(interview.interviewer_type)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button className="shrink-0 text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => setPage("practice")}>Manage prep interviews</button>
             </div>
 
             {areQuestionsLoading && <p className="mt-6 border-y border-stone-300 py-5 text-sm text-stone-500">Opening the question library...</p>}
