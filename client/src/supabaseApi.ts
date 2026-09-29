@@ -108,15 +108,16 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     return json(questions);
   }
   if (routePath === "/practice-interviews" && method === "GET") {
-    const [{ data, error }, selectedResult] = await Promise.all([
-      supabase.from("practice_interviews").select("id, company, role, interviewer_type, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false }),
-      supabase.from("practice_questions").select("id, practice_interview_id, answer"),
-    ]);
+    const { data, error } = await supabase
+      .from("practice_interviews")
+      .select("id, company, role, interviewer_type, created_at, updated_at, practice_questions(id, answer)")
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: false });
     if (error) return failure(error.message, errorStatus(error.code));
-    if (selectedResult.error) return failure(selectedResult.error.message, errorStatus(selectedResult.error.code));
     const interviews = (data ?? []).map((interview) => {
-      const selected = (selectedResult.data ?? []).filter((question) => question.practice_interview_id === interview.id);
-      return { ...interview, question_count: selected.length, answered_count: selected.filter((question) => question.answer.trim() !== "").length };
+      const selected = interview.practice_questions ?? [];
+      const { practice_questions: _practiceQuestions, ...practiceInterview } = interview;
+      return { ...practiceInterview, question_count: selected.length, answered_count: selected.filter((question) => question.answer.trim() !== "").length };
     });
     return json(interviews);
   }

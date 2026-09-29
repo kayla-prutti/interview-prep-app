@@ -99,6 +99,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
   const questionPageCache = useRef(new PageCache<PagedResult<Question>>());
+  const practiceInterviewsLoaded = useRef(false);
+  const practiceInterviewsRequest = useRef<Promise<void> | null>(null);
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
@@ -168,9 +170,19 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }, [activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
 
   const loadPracticeInterviews = useCallback(async () => {
-    const response = await apiFetch(`${API_URL}/practice-interviews`);
-    if (!response.ok) throw new Error("Could not load prep interviews.");
-    setPracticeInterviews((await response.json()) as PracticeInterview[]);
+    if (practiceInterviewsRequest.current) return practiceInterviewsRequest.current;
+    const request = (async () => {
+      const response = await apiFetch(`${API_URL}/practice-interviews`);
+      if (!response.ok) throw new Error("Could not load prep interviews.");
+      setPracticeInterviews((await response.json()) as PracticeInterview[]);
+      practiceInterviewsLoaded.current = true;
+    })();
+    practiceInterviewsRequest.current = request;
+    try {
+      await request;
+    } finally {
+      if (practiceInterviewsRequest.current === request) practiceInterviewsRequest.current = null;
+    }
   }, []);
 
   const loadPracticeQuestions = useCallback(async (practiceInterviewId: number) => {
@@ -185,10 +197,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }, []);
 
   useEffect(() => {
-    // Loading remote data on first render is the intended external synchronization.
+    if (page === "interviews" || practiceInterviewsLoaded.current) return;
+    // Prep data is loaded only when Question Library or Preparation needs it.
     // oxlint-disable-next-line react/set-state-in-effect
     void loadPracticeInterviews();
-  }, [loadPracticeInterviews]);
+  }, [loadPracticeInterviews, page]);
 
   useEffect(() => {
     if (page !== "interviews") return;
