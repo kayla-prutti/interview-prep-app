@@ -52,13 +52,35 @@ function practiceInterviews(store: BrowserStore) {
 }
 
 function browserFetch(url: string, init?: RequestInit): Promise<Response> {
-  const path = url.startsWith(API_URL) ? url.slice(API_URL.length) : new URL(url, window.location.origin).pathname;
+  const requestUrl = new URL(url.startsWith(API_URL) ? url.slice(API_URL.length) : url, window.location.origin);
+  const path = requestUrl.pathname;
+  const query = requestUrl.searchParams;
   const method = (init?.method ?? "GET").toUpperCase();
   const store = readStore();
   const now = new Date().toISOString();
 
   if (path === "/interviews" && method === "GET") {
     return Promise.resolve(json([...store.interviews].sort((a, b) => (b.interview_date ?? "").localeCompare(a.interview_date ?? "") || b.id - a.id)));
+  }
+  if (path === "/interviews/page" && method === "GET") {
+    const search = (query.get("search") ?? "").trim().toLowerCase();
+    const type = query.get("type") ?? "all";
+    const offset = Math.max(0, Number(query.get("offset")) || 0);
+    const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
+    const matchingSearch = store.interviews.filter((interview) => search === "" || interview.company.toLowerCase().includes(search));
+    const matchingRows = matchingSearch
+      .filter((interview) => type === "all" || interview.interviewer_type === type)
+      .sort((a, b) => (b.interview_date ?? "").localeCompare(a.interview_date ?? "") || b.id - a.id);
+    return Promise.resolve(json({
+      items: matchingRows.slice(offset, offset + limit),
+      total: matchingRows.length,
+      counts: {
+        all: matchingSearch.length,
+        recruiter: matchingSearch.filter((item) => item.interviewer_type === "recruiter").length,
+        hiring_manager: matchingSearch.filter((item) => item.interviewer_type === "hiring_manager").length,
+        technical: matchingSearch.filter((item) => item.interviewer_type === "technical").length,
+      },
+    }));
   }
   if (path === "/interviews" && method === "POST") {
     const input = bodyOf(init);
@@ -81,6 +103,29 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       return interview ? [{ ...question, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type }] : [];
     });
     return Promise.resolve(json(questions));
+  }
+  if (path === "/questions/page" && method === "GET") {
+    const search = (query.get("search") ?? "").trim().toLowerCase();
+    const type = query.get("type") ?? "all";
+    const offset = Math.max(0, Number(query.get("offset")) || 0);
+    const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
+    const matchingSearch = store.questions.flatMap((question) => {
+      const interview = store.interviews.find((item) => item.id === question.interview_id);
+      if (!interview) return [];
+      const row = { ...question, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type };
+      return search === "" || [row.question_text, row.company, row.role].some((value) => value.toLowerCase().includes(search)) ? [row] : [];
+    });
+    const matchingRows = matchingSearch.filter((question) => type === "all" || question.interviewer_type === type).sort((a, b) => b.id - a.id);
+    return Promise.resolve(json({
+      items: matchingRows.slice(offset, offset + limit),
+      total: matchingRows.length,
+      counts: {
+        all: matchingSearch.length,
+        recruiter: matchingSearch.filter((item) => item.interviewer_type === "recruiter").length,
+        hiring_manager: matchingSearch.filter((item) => item.interviewer_type === "hiring_manager").length,
+        technical: matchingSearch.filter((item) => item.interviewer_type === "technical").length,
+      },
+    }));
   }
   if (path === "/practice-interviews" && method === "GET") return Promise.resolve(json(practiceInterviews(store)));
   if (path === "/practice-interviews" && method === "POST") {
@@ -218,7 +263,8 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export function apiFetch(url: string, init?: RequestInit) {
-  const path = url.startsWith(API_URL) ? url.slice(API_URL.length) : new URL(url, window.location.origin).pathname;
+  const requestUrl = new URL(url.startsWith(API_URL) ? url.slice(API_URL.length) : url, window.location.origin);
+  const path = `${requestUrl.pathname}${requestUrl.search}`;
   if (usesSupabase) return supabaseFetch(path, init);
   return browserStorageEnabled ? browserFetch(url, init) : fetch(url, init);
 }

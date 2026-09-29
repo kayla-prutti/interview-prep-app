@@ -147,6 +147,15 @@ db.exec(`
       ON DELETE SET NULL,
     UNIQUE (practice_interview_id, source_question_id)
   );
+
+  CREATE INDEX IF NOT EXISTS interviews_type_date_idx
+  ON interviews(interviewer_type, interview_date DESC, id DESC);
+
+  CREATE INDEX IF NOT EXISTS questions_interview_id_idx
+  ON questions(interview_id);
+
+  CREATE INDEX IF NOT EXISTS questions_type_id_idx
+  ON questions(interviewer_type, id DESC);
 `);
 
 export default db;

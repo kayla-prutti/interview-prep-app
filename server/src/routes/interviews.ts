@@ -4,6 +4,21 @@ import { interviewInput, positiveId } from "../lib/validation.js";
 
 export const interviewsRouter = Router();
 
+interviewsRouter.get("/page", (req, res) => {
+  const search = String(req.query.search ?? "").trim().toLowerCase();
+  const requestedType = String(req.query.type ?? "all");
+  const type = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType : "all";
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+  const searchPattern = `%${search}%`;
+  const where = "(? = 'all' OR interviewer_type = ?) AND (? = '' OR lower(company) LIKE ?)";
+  const parameters = [type, type, search, searchPattern];
+  const items = db.prepare(`SELECT * FROM interviews WHERE ${where} ORDER BY interview_date DESC, id DESC LIMIT ? OFFSET ?`).all(...parameters, limit, offset);
+  const total = (db.prepare(`SELECT COUNT(*) AS count FROM interviews WHERE ${where}`).get(...parameters) as { count: number }).count;
+  const countForType = (countType: string) => (db.prepare("SELECT COUNT(*) AS count FROM interviews WHERE (? = 'all' OR interviewer_type = ?) AND (? = '' OR lower(company) LIKE ?)").get(countType, countType, search, searchPattern) as { count: number }).count;
+  res.json({ items, total, counts: { all: countForType("all"), recruiter: countForType("recruiter"), hiring_manager: countForType("hiring_manager"), technical: countForType("technical") } });
+});
+
 interviewsRouter.get("/", (_req, res) => {
   res.json(db.prepare("SELECT * FROM interviews ORDER BY interview_date DESC, id DESC").all());
 });

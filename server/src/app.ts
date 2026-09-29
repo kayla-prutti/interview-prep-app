@@ -6,7 +6,7 @@ import { practiceRouter } from "./routes/practice.js";
 
 export const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/] }));
 app.use(express.json());
 
 app.get("/", (_req, res) => {

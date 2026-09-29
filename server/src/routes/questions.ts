@@ -4,6 +4,22 @@ import { positiveId, questionText } from "../lib/validation.js";
 
 export const questionsRouter = Router();
 
+questionsRouter.get("/questions/page", (req, res) => {
+  const search = String(req.query.search ?? "").trim().toLowerCase();
+  const requestedType = String(req.query.type ?? "all");
+  const type = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType : "all";
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+  const searchPattern = `%${search}%`;
+  const where = "(? = 'all' OR interviews.interviewer_type = ?) AND (? = '' OR lower(questions.question_text) LIKE ? OR lower(interviews.company) LIKE ? OR lower(interviews.role) LIKE ?)";
+  const parameters = [type, type, search, searchPattern, searchPattern, searchPattern];
+  const select = "SELECT questions.id, questions.question_text, questions.created_at, interviews.id AS interview_id, interviews.company, interviews.role, interviews.interviewer_type FROM questions JOIN interviews ON interviews.id = questions.interview_id";
+  const items = db.prepare(`${select} WHERE ${where} ORDER BY questions.id DESC LIMIT ? OFFSET ?`).all(...parameters, limit, offset);
+  const total = (db.prepare(`SELECT COUNT(*) AS count FROM questions JOIN interviews ON interviews.id = questions.interview_id WHERE ${where}`).get(...parameters) as { count: number }).count;
+  const countForType = (countType: string) => (db.prepare(`SELECT COUNT(*) AS count FROM questions JOIN interviews ON interviews.id = questions.interview_id WHERE (? = 'all' OR interviews.interviewer_type = ?) AND (? = '' OR lower(questions.question_text) LIKE ? OR lower(interviews.company) LIKE ? OR lower(interviews.role) LIKE ?)`).get(countType, countType, search, searchPattern, searchPattern, searchPattern) as { count: number }).count;
+  res.json({ items, total, counts: { all: countForType("all"), recruiter: countForType("recruiter"), hiring_manager: countForType("hiring_manager"), technical: countForType("technical") } });
+});
+
 questionsRouter.get("/questions", (_req, res) => {
   res.json(db.prepare(`SELECT questions.id, questions.question_text, questions.created_at, interviews.id AS interview_id, interviews.company, interviews.role, interviews.interviewer_type FROM questions JOIN interviews ON interviews.id = questions.interview_id ORDER BY questions.id DESC`).all());
 });

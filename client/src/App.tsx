@@ -1,8 +1,8 @@
 import {
   type FormEvent,
   type PointerEvent,
+  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -22,6 +22,7 @@ import type { InterviewGridContext } from "./features/interviews/types";
 import { questionColumns } from "./features/questions/columns";
 import type { QuestionGridContext } from "./features/questions/types";
 import { PracticePage } from "./features/practice/PracticePage";
+import { useDebouncedValue } from "./hooks/useDebouncedValue";
 import {
   emptyInterviewForm as emptyForm,
   formatDate,
@@ -53,14 +54,26 @@ type EditableInterviewQuestion = {
   question_text: string;
 };
 
+type TypeCounts = Record<InterviewFilter, number>;
+type PagedResult<Item> = { items: Item[]; total: number; counts: TypeCounts };
+const emptyTypeCounts: TypeCounts = { all: 0, recruiter: 0, hiring_manager: 0, technical: 0 };
+
 function App({ accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
   const [page, setPage] = useState<Page>("interviews");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeInterviewType, setActiveInterviewType] = useState<InterviewFilter>("all");
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [interviewTotal, setInterviewTotal] = useState(0);
+  const [interviewCounts, setInterviewCounts] = useState<TypeCounts>(emptyTypeCounts);
+  const [interviewPage, setInterviewPage] = useState(0);
+  const [interviewPageSize, setInterviewPageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionTotal, setQuestionTotal] = useState(0);
+  const [questionCounts, setQuestionCounts] = useState<TypeCounts>(emptyTypeCounts);
+  const [questionPage, setQuestionPage] = useState(0);
+  const [questionPageSize, setQuestionPageSize] = useState(10);
   const [questionSearch, setQuestionSearch] = useState("");
   const [activeQuestionType, setActiveQuestionType] = useState<InterviewFilter>("all");
   const [practiceInterviews, setPracticeInterviews] = useState<PracticeInterview[]>([]);
@@ -84,44 +97,62 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [isEditingDetail, setIsEditingDetail] = useState(false);
   const [editForm, setEditForm] = useState<InterviewEditForm | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const interviewRequest = useRef(0);
+  const questionRequest = useRef(0);
+  const debouncedSearch = useDebouncedValue(search);
+  const debouncedQuestionSearch = useDebouncedValue(questionSearch);
 
-  async function loadInterviews() {
+  const loadInterviews = useCallback(async () => {
+    const requestId = ++interviewRequest.current;
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await apiFetch(`${API_URL}/interviews`);
+      const parameters = new URLSearchParams({ offset: String(interviewPage * interviewPageSize), limit: String(interviewPageSize), search: debouncedSearch, type: activeInterviewType });
+      const response = await apiFetch(`${API_URL}/interviews/page?${parameters}`);
       if (!response.ok) throw new Error("Could not load interviews.");
-      setInterviews((await response.json()) as Interview[]);
+      const result = (await response.json()) as PagedResult<Interview>;
+      if (requestId !== interviewRequest.current) return;
+      setInterviews(result.items);
+      setInterviewTotal(result.total);
+      setInterviewCounts(result.counts);
     } catch (caughtError) {
+      if (requestId !== interviewRequest.current) return;
       setError(caughtError instanceof Error ? caughtError.message : "Could not load interviews.");
     } finally {
-      setIsLoading(false);
+      if (requestId === interviewRequest.current) setIsLoading(false);
     }
-  }
+  }, [activeInterviewType, debouncedSearch, interviewPage, interviewPageSize]);
 
-  async function loadQuestions() {
+  const loadQuestions = useCallback(async () => {
+    const requestId = ++questionRequest.current;
     setAreQuestionsLoading(true);
     setQuestionsError("");
 
     try {
-      const response = await apiFetch(`${API_URL}/questions`);
+      const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType });
+      const response = await apiFetch(`${API_URL}/questions/page?${parameters}`);
       if (!response.ok) throw new Error("Could not load the question library.");
-      setQuestions((await response.json()) as Question[]);
+      const result = (await response.json()) as PagedResult<Question>;
+      if (requestId !== questionRequest.current) return;
+      setQuestions(result.items);
+      setQuestionTotal(result.total);
+      setQuestionCounts(result.counts);
     } catch (caughtError) {
+      if (requestId !== questionRequest.current) return;
       setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load the question library.");
     } finally {
-      setAreQuestionsLoading(false);
+      if (requestId === questionRequest.current) setAreQuestionsLoading(false);
     }
-  }
+  }, [activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
 
-  async function loadPracticeInterviews() {
+  const loadPracticeInterviews = useCallback(async () => {
     const response = await apiFetch(`${API_URL}/practice-interviews`);
     if (!response.ok) throw new Error("Could not load prep interviews.");
     setPracticeInterviews((await response.json()) as PracticeInterview[]);
-  }
+  }, []);
 
-  async function loadPracticeQuestions(practiceInterviewId: number) {
+  const loadPracticeQuestions = useCallback(async (practiceInterviewId: number) => {
     setArePracticeQuestionsLoading(true);
     try {
       const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
@@ -130,41 +161,31 @@ function App({ accountEmail, onSignOut }: AppProps) {
     } finally {
       setArePracticeQuestionsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     // Loading remote data on first render is the intended external synchronization.
     // oxlint-disable-next-line react/set-state-in-effect
-    void loadInterviews();
-    void loadQuestions();
     void loadPracticeInterviews();
-  }, []);
+  }, [loadPracticeInterviews]);
 
-  const filteredInterviews = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return interviews.filter((interview) => {
-      const matchesCompany = query === "" || interview.company.toLowerCase().includes(query);
-      const matchesType = activeInterviewType === "all" || interview.interviewer_type === activeInterviewType;
-      return matchesCompany && matchesType;
-    });
-  }, [activeInterviewType, interviews, search]);
+  useEffect(() => {
+    if (page !== "interviews") return;
+    // Fetching the active server-side page keeps the UI synchronized with remote data.
+    // oxlint-disable-next-line react/set-state-in-effect
+    void loadInterviews();
+  }, [loadInterviews, page]);
+
+  useEffect(() => {
+    if (page !== "questions") return;
+    // Fetching the active server-side page keeps the UI synchronized with remote data.
+    // oxlint-disable-next-line react/set-state-in-effect
+    void loadQuestions();
+  }, [loadQuestions, page]);
 
   const activeInterviewSection = interviewSections.find((section) => section.type === activeInterviewType) ?? interviewSections[0];
 
-  const filteredQuestions = useMemo(() => {
-    const query = questionSearch.trim().toLowerCase();
-    return query === ""
-      ? questions
-      : questions.filter((question) =>
-          [question.question_text, question.company, question.role]
-            .some((value) => value?.toLowerCase().includes(query)),
-        );
-  }, [questionSearch, questions]);
-
   const activeQuestionSection = questionLibrarySections.find((section) => section.type === activeQuestionType) ?? questionLibrarySections[0];
-  const activeQuestions = activeQuestionType === "all"
-    ? filteredQuestions
-    : filteredQuestions.filter((question) => question.interviewer_type === activeQuestionType);
   const practiceSourceQuestionIds = new Set(practiceQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null));
 
   const questionRows = form.questions ?? [""];
@@ -301,7 +322,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setSelectedQuestions(refreshedQuestions);
       setEditQuestions(refreshedQuestions.map((question) => ({ id: question.id, question_text: question.question_text })));
       setIsEditingDetail(false);
-      void loadQuestions();
+      void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not update interview.");
     } finally {
@@ -321,9 +342,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (!response.ok) throw new Error("Could not delete interview.");
 
       setInterviews((current) => current.filter((interview) => interview.id !== selectedInterview.id));
+      setInterviewPage(0);
       setIsDeleteModalOpen(false);
       setSelectedInterview(null);
-      void loadQuestions();
+      void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not delete interview.");
     }
@@ -369,10 +391,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
         }),
       );
 
-      setInterviews((current) => [result, ...current]);
+      setInterviewPage(0);
       setForm(emptyForm);
       setIsModalOpen(false);
-      void loadQuestions();
+      void loadInterviews();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Could not save interview.");
     } finally {
@@ -457,17 +479,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const interviewTabs: FolderTab<InterviewFilter>[] = interviewSections.map((section) => ({
     value: section.type,
     label: section.title,
-    count: section.type === "all"
-      ? interviews.length
-      : interviews.filter((interview) => interview.interviewer_type === section.type).length,
+    count: interviewCounts[section.type],
   }));
 
   const questionTabs: FolderTab<InterviewFilter>[] = questionLibrarySections.map((section) => ({
     value: section.type,
     label: section.title,
-    count: section.type === "all"
-      ? filteredQuestions.length
-      : filteredQuestions.filter((question) => question.interviewer_type === section.type).length,
+    count: questionCounts[section.type],
   }));
 
   const accountControl = accountEmail && onSignOut
@@ -501,10 +519,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
             />
 
             <div className="min-h-0 flex-1 md:flex md:flex-col">
-            <SearchField ariaLabel="Search by company name" className="mt-7 md:mt-5" placeholder="Search by company name" value={search} onChange={setSearch} onClear={() => setSearch("")} />
+            <SearchField ariaLabel="Search by company name" className="mt-7 md:mt-5" placeholder="Search by company name" value={search} onChange={(value) => { setSearch(value); setInterviewPage(0); }} onClear={() => { setSearch(""); setInterviewPage(0); }} />
 
             <div className="mt-7 md:mt-5">
-              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" countLabel="interviews" panelId="interview-folder-panel" tabs={interviewTabs} onChange={setActiveInterviewType} />
+              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" countLabel="interviews" panelId="interview-folder-panel" tabs={interviewTabs} onChange={(value) => { setActiveInterviewType(value); setInterviewPage(0); }} />
             </div>
 
             <section className="relative z-20 flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)]" id="interview-folder-panel" role="tabpanel">
@@ -517,10 +535,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
               {isLoading && <p className="p-5 text-sm text-stone-500">Loading interviews...</p>}
               {error && <p className="m-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{error}</p>}
-              {!isLoading && !error && filteredInterviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
+              {!isLoading && !error && interviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
 
-              {!isLoading && !error && filteredInterviews.length > 0 && (
-                <DataTable columns={interviewColumns} context={gridContext} rows={filteredInterviews} onRowClick={(interview) => void openInterview(interview)} />
+              {!isLoading && !error && interviews.length > 0 && (
+                <DataTable columns={interviewColumns} context={gridContext} rows={interviews} onRowClick={(interview) => void openInterview(interview)} pagination={{ page: interviewPage, pageSize: interviewPageSize, totalRows: interviewTotal, onPageChange: setInterviewPage, onPageSizeChange: (pageSize) => { setInterviewPageSize(pageSize); setInterviewPage(0); } }} />
               )}
             </section>
             </div>
@@ -529,7 +547,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="questions">
             <PageHeader accountControl={accountControl} description="Browse every saved question by the kind of conversation where it appeared." eyebrow="Reference collection" title="Question library" />
 
-            <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={setQuestionSearch} onClear={() => setQuestionSearch("")} />
+            <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={(value) => { setQuestionSearch(value); setQuestionPage(0); }} onClear={() => { setQuestionSearch(""); setQuestionPage(0); }} />
 
             <div className="mt-4 flex max-w-2xl flex-col gap-2 rounded-lg border border-[#D6D6D2] bg-white px-4 py-3 sm:flex-row sm:items-center">
               <label className="flex min-w-0 flex-1 items-center gap-3 text-sm font-bold text-[#303030]">
@@ -547,7 +565,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
             {!areQuestionsLoading && !questionsError && (
               <div className="mt-10 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
-                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" countLabel="questions" panelId="question-folder-panel" tabs={questionTabs} onChange={setActiveQuestionType} />
+                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" countLabel="questions" panelId="question-folder-panel" tabs={questionTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
 
                 <section className="relative z-20 flex min-h-[420px] flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)] md:min-h-0 md:flex-1" id="question-folder-panel" role="tabpanel">
                   <header className="flex shrink-0 flex-col gap-3 border-b border-[#D6D6D2] px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
@@ -558,10 +576,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
                     </div>
                   </header>
 
-                  {activeQuestions.length === 0 ? (
+                  {questions.length === 0 ? (
                     <p className="px-6 py-8 text-sm text-[#686868]">No matching questions in this folder.</p>
                   ) : (
-                    <DataTable columns={questionColumns} context={questionGridContext} refreshKey={[activePracticeId, ...practiceSourceQuestionIds].join("-")} rows={activeQuestions} />
+                    <DataTable columns={questionColumns} context={questionGridContext} pagination={{ page: questionPage, pageSize: questionPageSize, totalRows: questionTotal, onPageChange: setQuestionPage, onPageSizeChange: (pageSize) => { setQuestionPageSize(pageSize); setQuestionPage(0); } }} refreshKey={[activePracticeId, ...practiceSourceQuestionIds].join("-")} rows={questions} />
                   )}
                 </section>
               </div>
