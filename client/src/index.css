@@ -19,6 +19,14 @@ body {
   width: 100%;
 }
 
+button:enabled {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
