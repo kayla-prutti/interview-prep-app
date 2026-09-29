@@ -167,14 +167,16 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
                                       {answer ? (
                                         <details className="mt-4 rounded-lg border border-[#D6D6D2] bg-[#FAFAF8]">
                                           <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-[#9A3D00]">Reveal saved answer</summary>
-                                          <div className="whitespace-pre-wrap border-t border-[#D6D6D2] px-4 py-4 text-sm leading-6 text-[#303030]">{answer}</div>
+                                          <div className="flex items-start gap-4 border-t border-[#D6D6D2] px-4 py-4">
+                                            <div className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-6 text-[#303030]">{answer}</div>
+                                            <button aria-label="Edit saved answer" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit saved answer" type="button" onClick={() => openAnswerModal(question)}><PenIcon /></button>
+                                          </div>
                                         </details>
                                       ) : (
                                         <button className="mt-4 rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => openAnswerModal(question)}>Add answer</button>
                                       )}
                                     </div>
                                     <div className="flex shrink-0 gap-1">
-                                      <button aria-label={answer ? "Edit answer" : "Add answer"} className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title={answer ? "Edit answer" : "Add answer"} type="button" onClick={() => openAnswerModal(question)}><PenIcon /></button>
                                       <button aria-label="Remove from this prep interview" className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Remove from this prep interview" type="button" onClick={() => void onRemoveQuestion(question.id)}><BinIcon /></button>
                                     </div>
                                   </div>
