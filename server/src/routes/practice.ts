@@ -66,7 +66,9 @@ practiceRouter.get("/:practiceInterviewId/questions", (req, res) => {
   const practiceInterviewId = positiveId(req.params.practiceInterviewId);
   if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
   const questions = db.prepare(`
-    SELECT practice_questions.*, interviews.company AS source_company
+    SELECT practice_questions.id, practice_questions.source_question_id,
+      practice_questions.question_text, practice_questions.answer,
+      interviews.company AS source_company
     FROM practice_questions
     LEFT JOIN questions ON questions.id = practice_questions.source_question_id
     LEFT JOIN interviews ON interviews.id = questions.interview_id

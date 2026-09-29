@@ -106,6 +106,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const practiceSummariesLoaded = useRef(false);
   const practiceOptionsRequest = useRef<Promise<void> | null>(null);
   const practiceSummariesRequest = useRef<Promise<void> | null>(null);
+  const practiceQuestionCache = useRef(new Map<number, PracticeQuestion[]>());
+  const practiceQuestionRequests = useRef(new Map<number, Promise<PracticeQuestion[]>>());
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
@@ -195,14 +197,29 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }, []);
 
   const loadPracticeQuestions = useCallback(async (practiceInterviewId: number) => {
+    const cached = practiceQuestionCache.current.get(practiceInterviewId);
+    if (cached) {
+      setPracticeQuestions(cached);
+      setPracticeSourceQuestionIds(new Set(cached.map((question) => question.source_question_id).filter((id): id is number => id !== null)));
+      return;
+    }
     setArePracticeQuestionsLoading(true);
     try {
-      const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
-      if (!response.ok) throw new Error("Could not load practice questions.");
-      const loadedQuestions = (await response.json()) as PracticeQuestion[];
+      let request = practiceQuestionRequests.current.get(practiceInterviewId);
+      if (!request) {
+        request = (async () => {
+          const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`);
+          if (!response.ok) throw new Error("Could not load practice questions.");
+          return (await response.json()) as PracticeQuestion[];
+        })();
+        practiceQuestionRequests.current.set(practiceInterviewId, request);
+      }
+      const loadedQuestions = await request;
+      practiceQuestionCache.current.set(practiceInterviewId, loadedQuestions);
       setPracticeQuestions(loadedQuestions);
       setPracticeSourceQuestionIds(new Set(loadedQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null)));
     } finally {
+      practiceQuestionRequests.current.delete(practiceInterviewId);
       setArePracticeQuestionsLoading(false);
     }
   }, []);
@@ -510,6 +527,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not delete the prep interview.");
     setPracticeInterviews((current) => current.filter((interview) => interview.id !== practiceInterviewId));
+    practiceQuestionCache.current.delete(practiceInterviewId);
     if (activePracticeId === practiceInterviewId) {
       setActivePracticeId(null);
       setPracticeQuestions([]);
@@ -534,6 +552,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
       const result = (await response.json()) as PracticeQuestion | { error: string };
       if (response.status !== 409 && (!response.ok || "error" in result)) throw new Error("error" in result ? result.error : "Could not add the question.");
       setPracticeSourceQuestionIds((current) => new Set(current).add(questionId));
+      practiceQuestionCache.current.delete(practiceInterviewId);
       practiceSummariesLoaded.current = false;
     } finally {
       pendingPracticeAddsRef.current.delete(pendingKey);
@@ -551,6 +570,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
     const result = (await response.json()) as PracticeQuestion | { error: string };
     if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not save the answer.");
     setPracticeQuestions((current) => current.map((question) => question.id === result.id ? { ...question, ...result } : question));
+    const cachedQuestions = practiceQuestionCache.current.get(activePracticeId);
+    if (cachedQuestions) practiceQuestionCache.current.set(activePracticeId, cachedQuestions.map((question) => question.id === result.id ? { ...question, ...result } : question));
     await loadPracticeInterviews();
   }
 
@@ -560,6 +581,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
     const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not remove the question from this prep interview.");
     setPracticeQuestions((current) => current.filter((question) => question.id !== practiceQuestionId));
+    const cachedQuestions = practiceQuestionCache.current.get(activePracticeId);
+    if (cachedQuestions) practiceQuestionCache.current.set(activePracticeId, cachedQuestions.filter((question) => question.id !== practiceQuestionId));
     if (removedSourceId !== null && removedSourceId !== undefined) setPracticeSourceQuestionIds((current) => new Set([...current].filter((id) => id !== removedSourceId)));
     await loadPracticeInterviews();
   }

@@ -219,7 +219,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       const selected = store.practiceQuestions.filter((question) => question.practice_interview_id === practiceInterviewId).sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map((question) => {
         const source = store.questions.find((item) => item.id === question.source_question_id);
         const interview = store.interviews.find((item) => item.id === source?.interview_id);
-        return { ...question, source_company: interview?.company };
+        return { id: question.id, source_question_id: question.source_question_id, question_text: question.question_text, answer: question.answer, source_company: interview?.company };
       });
       return Promise.resolve(json(selected));
     }

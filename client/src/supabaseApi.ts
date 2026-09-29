@@ -197,7 +197,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     if (method === "GET") {
       const { data, error } = await supabase
         .from("practice_questions")
-        .select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at, source_question:questions(interviews(company))")
+        .select("id, source_question_id, question_text, answer, source_question:questions(interviews(company))")
         .eq("practice_interview_id", practiceInterviewId)
         .order("sort_order")
         .order("id");
