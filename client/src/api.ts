@@ -103,10 +103,17 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     const type = query.get("type") ?? "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
+    const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0);
     const matchingSearch = store.questions.flatMap((question) => {
       const interview = store.interviews.find((item) => item.id === question.interview_id);
       if (!interview) return [];
-      const row = { ...question, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type };
+      const row = {
+        ...question,
+        company: interview.company,
+        role: interview.role,
+        interviewer_type: interview.interviewer_type,
+        is_added_to_practice: practiceInterviewId > 0 && store.practiceQuestions.some((selected) => selected.practice_interview_id === practiceInterviewId && selected.source_question_id === question.id),
+      };
       return search === "" || [row.question_text, row.company, row.role].some((value) => value.toLowerCase().includes(search)) ? [row] : [];
     });
     const matchingRows = matchingSearch.filter((question) => type === "all" || question.interviewer_type === type).sort((a, b) => b.id - a.id);
@@ -202,14 +209,6 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     store.practiceQuestions = store.practiceQuestions.filter((question) => question.practice_interview_id !== id);
     writeStore(store);
     return Promise.resolve(new Response(null, { status: 204 }));
-  }
-
-  match = path.match(/^\/practice-interviews\/(\d+)\/question-ids$/);
-  if (match && method === "GET") {
-    const practiceInterviewId = Number(match[1]);
-    return Promise.resolve(json(store.practiceQuestions
-      .filter((question) => question.practice_interview_id === practiceInterviewId && question.source_question_id !== null)
-      .map((question) => question.source_question_id)));
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)\/questions$/);

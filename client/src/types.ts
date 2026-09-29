@@ -20,6 +20,7 @@ export type Question = {
   company?: string;
   role?: string;
   interviewer_type?: InterviewerType;
+  is_added_to_practice?: boolean;
 };
 
 export type InterviewForm = {

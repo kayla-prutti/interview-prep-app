@@ -146,11 +146,12 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   const loadQuestions = useCallback(async () => {
     const requestId = ++questionRequest.current;
-    const cacheKey = createPageCacheKey({ page: questionPage, pageSize: questionPageSize, search: debouncedQuestionSearch, type: activeQuestionType });
+    const cacheKey = createPageCacheKey({ page: questionPage, pageSize: questionPageSize, search: debouncedQuestionSearch, type: `${activeQuestionType}:${activePracticeId ?? "none"}` });
     const cached = questionPageCache.current.get(cacheKey);
     if (cached) {
       setQuestions(cached.items);
       setQuestionTotal(cached.total);
+      setPracticeSourceQuestionIds(new Set(cached.items.filter((question) => question.is_added_to_practice).map((question) => question.id)));
       setQuestionsError("");
       setAreQuestionsLoading(false);
       return;
@@ -160,6 +161,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setQuestionsError("");
     try {
       const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType });
+      if (activePracticeId) parameters.set("practiceInterviewId", String(activePracticeId));
       const result = await questionPageCache.current.load(cacheKey, async () => {
         const response = await apiFetch(`${API_URL}/questions/page?${parameters}`);
         if (!response.ok) throw new Error("Could not load the question library.");
@@ -168,13 +170,14 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId !== questionRequest.current) return;
       setQuestions(result.items);
       setQuestionTotal(result.total);
+      setPracticeSourceQuestionIds(new Set(result.items.filter((question) => question.is_added_to_practice).map((question) => question.id)));
     } catch (caughtError) {
       if (requestId !== questionRequest.current) return;
       setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load the question library.");
     } finally {
       if (requestId === questionRequest.current) setAreQuestionsLoading(false);
     }
-  }, [activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
+  }, [activePracticeId, activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
 
   const loadPracticeInterviews = useCallback(async (view: "options" | "summary" = "summary") => {
     const requestRef = view === "options" ? practiceOptionsRequest : practiceSummariesRequest;
@@ -222,12 +225,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       practiceQuestionRequests.current.delete(practiceInterviewId);
       setArePracticeQuestionsLoading(false);
     }
-  }, []);
-
-  const loadPracticeQuestionIds = useCallback(async (practiceInterviewId: number) => {
-    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/question-ids`);
-    if (!response.ok) throw new Error("Could not load selected practice questions.");
-    setPracticeSourceQuestionIds(new Set((await response.json()) as number[]));
   }, []);
 
   useEffect(() => {
@@ -492,7 +489,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setActivePracticeId(practiceInterviewId);
     setPracticeQuestions([]);
     setPracticeSourceQuestionIds(new Set());
-    if (practiceInterviewId) void loadPracticeQuestionIds(practiceInterviewId);
   }
 
   async function togglePracticePicker() {
@@ -558,6 +554,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       const result = (await response.json()) as PracticeQuestion | { error: string };
       if (response.status !== 409 && (!response.ok || "error" in result)) throw new Error("error" in result ? result.error : "Could not add the question.");
       setPracticeSourceQuestionIds((current) => new Set(current).add(questionId));
+      setQuestions((current) => current.map((question) => question.id === questionId ? { ...question, is_added_to_practice: true } : question));
+      questionPageCache.current.clear();
       practiceQuestionCache.current.delete(practiceInterviewId);
       practiceSummariesLoaded.current = false;
     } finally {
@@ -589,6 +587,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setPracticeQuestions((current) => current.filter((question) => question.id !== practiceQuestionId));
     const cachedQuestions = practiceQuestionCache.current.get(activePracticeId);
     if (cachedQuestions) practiceQuestionCache.current.set(activePracticeId, cachedQuestions.filter((question) => question.id !== practiceQuestionId));
+    questionPageCache.current.clear();
     if (removedSourceId !== null && removedSourceId !== undefined) setPracticeSourceQuestionIds((current) => new Set([...current].filter((id) => id !== removedSourceId)));
     await loadPracticeInterviews();
   }

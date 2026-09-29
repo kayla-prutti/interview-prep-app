@@ -52,6 +52,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const type: InterviewFilter = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType as InterviewerType : "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
+    const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0);
     let matchingQuestionIds: number[] | null = null;
 
     if (search) {
@@ -72,16 +73,29 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
       if (matchingQuestionIds.length === 0) return json({ items: [], total: 0 });
     }
 
-    let pageQuery = supabase.from("questions").select("id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type)", { count: "exact" });
+    const pageSelection = practiceInterviewId
+      ? "id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type), practice_questions(practice_interview_id)"
+      : "id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type)";
+    let pageQuery = supabase.from("questions").select(pageSelection, { count: "exact" });
     if (matchingQuestionIds) pageQuery = pageQuery.in("id", matchingQuestionIds);
     if (type !== "all") pageQuery = pageQuery.eq("interviews.interviewer_type", type);
+    if (practiceInterviewId) pageQuery = pageQuery.eq("practice_questions.practice_interview_id", practiceInterviewId);
 
     try {
       const pageResult = await pageQuery.order("id", { ascending: false }).range(offset, offset + limit - 1);
       if (pageResult.error) return failure(pageResult.error.message, errorStatus(pageResult.error.code));
-      const items = (pageResult.data ?? []).map((row) => {
+      const rows = (pageResult.data ?? []) as unknown as Array<{
+        id: number;
+        question_text: string;
+        created_at: string;
+        interview_id: number;
+        interviews: { company: string; role: string; interviewer_type: Question["interviewer_type"] };
+        practice_questions?: { practice_interview_id: number }[];
+      }>;
+      const items = rows.map((row) => {
         const interview = row.interviews as unknown as { company: string; role: string; interviewer_type: Question["interviewer_type"] };
-        return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type };
+        const selected = row.practice_questions ?? [];
+        return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type, is_added_to_practice: selected.length > 0 };
       });
       return json({ items, total: pageResult.count ?? 0 });
     } catch (caughtError) {
@@ -179,16 +193,6 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   if (match && method === "DELETE") {
     const { error } = await supabase.from("practice_interviews").delete().eq("id", Number(match[1]));
     return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
-  }
-
-  match = routePath.match(/^\/practice-interviews\/(\d+)\/question-ids$/);
-  if (match && method === "GET") {
-    const { data, error } = await supabase
-      .from("practice_questions")
-      .select("source_question_id")
-      .eq("practice_interview_id", Number(match[1]));
-    if (error) return failure(error.message, errorStatus(error.code));
-    return json((data ?? []).map((question) => question.source_question_id).filter((id): id is number => id !== null));
   }
 
   match = routePath.match(/^\/practice-interviews\/(\d+)\/questions$/);

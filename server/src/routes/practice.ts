@@ -27,13 +27,6 @@ practiceRouter.get("/", (req, res) => {
   res.json(interviews);
 });
 
-practiceRouter.get("/:practiceInterviewId/question-ids", (req, res) => {
-  const practiceInterviewId = positiveId(req.params.practiceInterviewId);
-  if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
-  const questions = db.prepare("SELECT source_question_id FROM practice_questions WHERE practice_interview_id = ? AND source_question_id IS NOT NULL").all(practiceInterviewId) as { source_question_id: number }[];
-  res.json(questions.map((question) => question.source_question_id));
-});
-
 practiceRouter.post("/", (req, res) => {
   const { company, role, interviewer_type } = (req.body ?? {}) as Record<string, unknown>;
   if (typeof company !== "string" || company.trim() === "") { res.status(400).json({ error: "Company is required." }); return; }
