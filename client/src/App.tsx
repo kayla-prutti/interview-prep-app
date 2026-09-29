@@ -79,6 +79,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [practiceInterviews, setPracticeInterviews] = useState<PracticeInterview[]>([]);
   const [activePracticeId, setActivePracticeId] = useState<number | null>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
+  const [pendingPracticeAdds, setPendingPracticeAdds] = useState<Set<string>>(() => new Set());
   const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
   const [questionsError, setQuestionsError] = useState("");
@@ -99,6 +100,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const interviewRequest = useRef(0);
   const questionRequest = useRef(0);
+  const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
 
@@ -439,14 +441,25 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
-    const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_question_id: questionId }),
-    });
-    const result = (await response.json()) as PracticeQuestion | { error: string };
-    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not add the question.");
-    await Promise.all([loadPracticeQuestions(activePracticeId), loadPracticeInterviews()]);
+    const practiceInterviewId = activePracticeId;
+    const pendingKey = `${practiceInterviewId}:${questionId}`;
+    if (pendingPracticeAddsRef.current.has(pendingKey)) return;
+    pendingPracticeAddsRef.current.add(pendingKey);
+    setPendingPracticeAdds(new Set(pendingPracticeAddsRef.current));
+
+    try {
+      const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source_question_id: questionId }),
+      });
+      const result = (await response.json()) as PracticeQuestion | { error: string };
+      if (response.status !== 409 && (!response.ok || "error" in result)) throw new Error("error" in result ? result.error : "Could not add the question.");
+      await Promise.all([loadPracticeQuestions(practiceInterviewId), loadPracticeInterviews()]);
+    } finally {
+      pendingPracticeAddsRef.current.delete(pendingKey);
+      setPendingPracticeAdds(new Set(pendingPracticeAddsRef.current));
+    }
   }
 
   async function savePracticeAnswer(practiceQuestionId: number, answer: string) {
@@ -473,6 +486,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionGridContext: QuestionGridContext = {
     canAddToPractice: activePracticeId !== null,
     isAddedToPractice: (questionId) => practiceSourceQuestionIds.has(questionId),
+    isAddingToPractice: (questionId) => activePracticeId !== null && pendingPracticeAdds.has(`${activePracticeId}:${questionId}`),
     onAddToPractice: (questionId) => void addQuestionToPractice(questionId).catch((caughtError) => setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not add the question.")),
   };
 
@@ -579,7 +593,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
                   {questions.length === 0 ? (
                     <p className="px-6 py-8 text-sm text-[#686868]">No matching questions in this folder.</p>
                   ) : (
-                    <DataTable columns={questionColumns} context={questionGridContext} pagination={{ page: questionPage, pageSize: questionPageSize, totalRows: questionTotal, onPageChange: setQuestionPage, onPageSizeChange: (pageSize) => { setQuestionPageSize(pageSize); setQuestionPage(0); } }} refreshKey={[activePracticeId, ...practiceSourceQuestionIds].join("-")} rows={questions} />
+                    <DataTable columns={questionColumns} context={questionGridContext} pagination={{ page: questionPage, pageSize: questionPageSize, totalRows: questionTotal, onPageChange: setQuestionPage, onPageSizeChange: (pageSize) => { setQuestionPageSize(pageSize); setQuestionPage(0); } }} refreshKey={[activePracticeId, ...practiceSourceQuestionIds, ...pendingPracticeAdds].join("-")} rows={questions} />
                   )}
                 </section>
               </div>
