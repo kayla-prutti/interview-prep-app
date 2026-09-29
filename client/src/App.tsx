@@ -47,6 +47,11 @@ type AppProps = {
   onSignOut?: () => Promise<void>;
 };
 
+type EditableInterviewQuestion = {
+  id: number | null;
+  question_text: string;
+};
+
 function App({ accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
   const [page, setPage] = useState<Page>("interviews");
@@ -72,6 +77,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const dragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
+  const [editQuestions, setEditQuestions] = useState<EditableInterviewQuestion[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [isEditingDetail, setIsEditingDetail] = useState(false);
@@ -196,6 +202,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   async function openInterview(interview: Interview, mode: "view" | "edit" = "view") {
     setSelectedInterview(interview);
     setSelectedQuestions([]);
+    setEditQuestions([]);
     setDetailError("");
     setIsDetailLoading(true);
     setIsEditingDetail(mode === "edit");
@@ -210,7 +217,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
     try {
       const response = await apiFetch(`${API_URL}/interviews/${interview.id}/questions`);
       if (!response.ok) throw new Error("Could not load this interview's questions.");
-      setSelectedQuestions((await response.json()) as Question[]);
+      const interviewQuestions = (await response.json()) as Question[];
+      setSelectedQuestions(interviewQuestions);
+      setEditQuestions(interviewQuestions.map((question) => ({ id: question.id, question_text: question.question_text })));
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not load this interview's questions.");
     } finally {
@@ -230,6 +239,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     if (!selectedInterview || !editForm) return;
 
     setDetailError("");
+    setIsSaving(true);
 
     try {
       const response = await apiFetch(`${API_URL}/interviews/${selectedInterview.id}`, {
@@ -243,12 +253,53 @@ function App({ accountEmail, onSignOut }: AppProps) {
         throw new Error("error" in result ? result.error : "Could not update interview.");
       }
 
+      const savedQuestionIds = new Set(editQuestions.flatMap((question) => question.id === null || question.question_text.trim() === "" ? [] : [question.id]));
+      const originalQuestions = new Map(selectedQuestions.map((question) => [question.id, question]));
+      const questionRequests: Promise<Response>[] = [];
+
+      for (const question of selectedQuestions) {
+        if (!savedQuestionIds.has(question.id)) {
+          questionRequests.push(apiFetch(`${API_URL}/questions/${question.id}`, { method: "DELETE" }));
+        }
+      }
+
+      for (const question of editQuestions) {
+        const questionText = question.question_text.trim();
+        if (!questionText) continue;
+        if (question.id === null) {
+          questionRequests.push(apiFetch(`${API_URL}/interviews/${selectedInterview.id}/questions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question_text: questionText }),
+          }));
+        } else if (originalQuestions.get(question.id)?.question_text !== questionText) {
+          questionRequests.push(apiFetch(`${API_URL}/questions/${question.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question_text: questionText }),
+          }));
+        }
+      }
+
+      const questionResponses = await Promise.all(questionRequests);
+      if (questionResponses.some((questionResponse) => !questionResponse.ok)) {
+        throw new Error("The interview details were saved, but its questions could not all be updated.");
+      }
+
+      const refreshedQuestionsResponse = await apiFetch(`${API_URL}/interviews/${selectedInterview.id}/questions`);
+      if (!refreshedQuestionsResponse.ok) throw new Error("The interview was saved, but its questions could not be refreshed.");
+      const refreshedQuestions = (await refreshedQuestionsResponse.json()) as Question[];
+
       setInterviews((current) => current.map((interview) => interview.id === result.id ? result : interview));
       setSelectedInterview(result);
+      setSelectedQuestions(refreshedQuestions);
+      setEditQuestions(refreshedQuestions.map((question) => ({ id: question.id, question_text: question.question_text })));
       setIsEditingDetail(false);
       void loadQuestions();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not update interview.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -649,7 +700,43 @@ function App({ accountEmail, onSignOut }: AppProps) {
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interviewer type<select className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.interviewer_type} onChange={(event) => setEditForm({ ...editForm, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interview date<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={editForm.interview_date} onChange={(event) => setEditForm({ ...editForm, interview_date: event.target.value })} /></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Notes<textarea required className="min-h-28 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} /></label>
-                <footer className="mt-6 flex justify-end gap-3"><button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-[#F4F4F2]" type="button" onClick={() => setIsEditingDetail(false)}>Cancel</button><button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="submit">Save changes</button></footer>
+                <fieldset className="mt-5 border-t border-[#D6D6D2] pt-5">
+                  <legend className="text-sm font-semibold text-[#202020]">Questions asked</legend>
+                  <p className="mt-1 text-sm text-[#686868]">Edit, remove, or add questions from this interview.</p>
+                  {isDetailLoading ? (
+                    <p className="mt-3 text-sm text-slate-500">Loading questions...</p>
+                  ) : (
+                    <div className="mt-3 grid gap-2.5">
+                      {editQuestions.length === 0 && <p className="rounded-lg border border-dashed border-[#D6D6D2] px-4 py-3 text-sm text-[#686868]">No questions saved yet.</p>}
+                      {editQuestions.map((question, index) => (
+                        <div className="flex items-start gap-2" key={question.id ?? `new-${index}`}>
+                          <span className="mt-3 w-6 shrink-0 text-right text-xs font-semibold text-slate-400">{String(index + 1).padStart(2, "0")}</span>
+                          <textarea
+                            aria-label={`Question ${index + 1}`}
+                            className="min-h-20 min-w-0 flex-1 resize-y rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]"
+                            placeholder={`Question ${index + 1}`}
+                            value={question.question_text}
+                            onChange={(event) => setEditQuestions((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, question_text: event.target.value } : item))}
+                          />
+                          <button
+                            aria-label={`Remove question ${index + 1}`}
+                            className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-700"
+                            title="Remove question"
+                            type="button"
+                            onClick={() => setEditQuestions((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          >
+                            <BinIcon />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button className="mt-3 text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => setEditQuestions((current) => [...current, { id: null, question_text: "" }])}>+ Add question</button>
+                </fieldset>
+                <footer className="mt-6 flex justify-end gap-3">
+                  <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-[#F4F4F2]" type="button" onClick={() => { setIsEditingDetail(false); setEditQuestions(selectedQuestions.map((question) => ({ id: question.id, question_text: question.question_text }))); setEditForm({ company: selectedInterview.company, role: selectedInterview.role, notes: selectedInterview.notes, interviewer_type: selectedInterview.interviewer_type, interview_date: selectedInterview.interview_date ?? "" }); }}>Cancel</button>
+                  <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-wait disabled:opacity-70" disabled={isSaving || isDetailLoading} type="submit">{isSaving ? "Saving..." : "Save changes"}</button>
+                </footer>
               </form>
             )}
           </section>

@@ -141,6 +141,24 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     }
   }
 
+  match = path.match(/^\/questions\/(\d+)$/);
+  if (match) {
+    const questionId = Number(match[1]);
+    const index = store.questions.findIndex((question) => question.id === questionId);
+    if (index < 0) return Promise.resolve(json({ error: "Question not found." }, 404));
+    if (method === "PUT") {
+      store.questions[index] = { ...store.questions[index], question_text: String(bodyOf(init).question_text ?? "").trim() };
+      writeStore(store);
+      return Promise.resolve(json(store.questions[index]));
+    }
+    if (method === "DELETE") {
+      store.questions.splice(index, 1);
+      store.practiceQuestions = store.practiceQuestions.map((question) => question.source_question_id === questionId ? { ...question, source_question_id: null } : question);
+      writeStore(store);
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+  }
+
   match = path.match(/^\/practice-interviews\/(\d+)$/);
   if (match && method === "DELETE") {
     const id = Number(match[1]);

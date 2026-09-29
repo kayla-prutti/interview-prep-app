@@ -87,6 +87,19 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     }
   }
 
+  match = path.match(/^\/questions\/(\d+)$/);
+  if (match) {
+    const questionId = Number(match[1]);
+    if (method === "PUT") {
+      const { data, error } = await supabase.from("questions").update({ question_text: bodyOf(init).question_text }).eq("id", questionId).select("id, interview_id, question_text, created_at").single();
+      return error ? failure(error.message, errorStatus(error.code)) : json(data);
+    }
+    if (method === "DELETE") {
+      const { error } = await supabase.from("questions").delete().eq("id", questionId);
+      return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
+    }
+  }
+
   match = path.match(/^\/practice-interviews\/(\d+)$/);
   if (match && method === "DELETE") {
     const { error } = await supabase.from("practice_interviews").delete().eq("id", Number(match[1]));

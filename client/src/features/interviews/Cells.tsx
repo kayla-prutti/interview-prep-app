@@ -9,6 +9,22 @@ export function InterviewTypeCell({ data }: CustomCellRendererProps<Interview>) 
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${interviewerBadgeClass(data.interviewer_type)}`}>{interviewerLabel(data.interviewer_type)}</span>;
 }
 
+export function InterviewRoleCell({ context, data }: CustomCellRendererProps<Interview>) {
+  if (!data) return null;
+  const actions = context as InterviewGridContext;
+  return (
+    <button
+      aria-label={`View details for ${data.role} at ${data.company}`}
+      className="max-w-full cursor-pointer truncate text-left font-semibold text-[#3F3F3C] underline decoration-transparent underline-offset-4 transition-colors hover:text-[#C95712] hover:decoration-[#F5822A] focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5822A]"
+      title={`View ${data.role} interview details`}
+      type="button"
+      onClick={() => actions.onView(data)}
+    >
+      {data.role}
+    </button>
+  );
+}
+
 export function InterviewActionsCell({ context, data }: CustomCellRendererProps<Interview>) {
   if (!data) return null;
   const actions = context as InterviewGridContext;

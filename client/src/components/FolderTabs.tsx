@@ -26,10 +26,11 @@ export function FolderTabs<Value extends string>({ activeValue, ariaLabel, count
           <button
             aria-controls={panelId}
             aria-selected={isActive}
-            className={`relative min-w-[150px] flex-1 rounded-t-xl border border-b-0 border-[#BDBDB8] px-5 pb-3 pt-4 text-left transition-transform hover:-translate-y-1 ${isActive ? "z-20 text-[#202020] shadow-[0_-5px_16px_rgba(32,32,32,0.08)]" : "z-10 text-[#4A4A4A]"}`}
+            className={`relative min-w-[150px] flex-1 cursor-pointer rounded-t-xl border border-b-0 border-[#BDBDB8] px-5 pb-3 pt-4 text-left transition-all duration-150 hover:-translate-y-1 hover:border-[#F5822A] hover:brightness-95 hover:shadow-[0_-7px_18px_rgba(245,130,42,0.18)] focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5822A] focus-visible:ring-offset-2 ${isActive ? "z-20 text-[#202020] shadow-[0_-5px_16px_rgba(32,32,32,0.08)]" : "z-10 text-[#4A4A4A]"}`}
             key={tab.value}
             role="tab"
             style={{ backgroundColor: folderColor }}
+            title={`Filter by ${tab.label} interviews`}
             type="button"
             onClick={() => onChange(tab.value)}
           >
