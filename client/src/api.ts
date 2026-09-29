@@ -132,6 +132,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       id: nextId(store.practiceInterviews),
       company: String(input.company ?? "").trim(),
       role: String(input.role ?? "").trim(),
+      notes: String(input.notes ?? "").trim(),
       interviewer_type: input.interviewer_type as PracticeInterview["interviewer_type"],
       question_count: 0,
       answered_count: 0,
@@ -203,6 +204,18 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)$/);
+  if (match && method === "PUT") {
+    const id = Number(match[1]);
+    const index = store.practiceInterviews.findIndex((item) => item.id === id);
+    if (index < 0) return Promise.resolve(json({ error: "Prep interview not found." }, 404));
+    store.practiceInterviews[index] = {
+      ...store.practiceInterviews[index],
+      notes: String(bodyOf(init).notes ?? "").trim(),
+      updated_at: now,
+    };
+    writeStore(store);
+    return Promise.resolve(json(store.practiceInterviews[index]));
+  }
   if (match && method === "DELETE") {
     const id = Number(match[1]);
     store.practiceInterviews = store.practiceInterviews.filter((item) => item.id !== id);

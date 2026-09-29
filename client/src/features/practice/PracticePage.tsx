@@ -20,16 +20,18 @@ type PracticePageProps = {
   onRemoveQuestion: (questionId: number) => Promise<void>;
   onRetry: () => Promise<void>;
   onSaveAnswer: (questionId: number, answer: string) => Promise<void>;
+  onSaveNotes: (interviewId: number, notes: string) => Promise<void>;
   onSelectInterview: (interviewId: number | null) => void;
 };
 
 const emptyPracticeForm: PracticeInterviewForm = {
   company: "",
   role: "",
+  notes: "",
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingQuestions, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingQuestions, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onRetry, onSaveAnswer, onSaveNotes, onSelectInterview }: PracticePageProps) {
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
@@ -43,6 +45,9 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
   const [customQuestionText, setCustomQuestionText] = useState("");
   const [pageError, setPageError] = useState("");
   const [removingQuestionIds, setRemovingQuestionIds] = useState<Set<number>>(new Set());
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesError, setNotesError] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const canCreateInterview = createForm.company.trim() !== ""
     && createForm.role.trim() !== ""
     && createForm.interviewer_type.trim() !== "";
@@ -129,6 +134,19 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
     }
   }
 
+  async function saveNotes(interviewId: number) {
+    if (isSavingNotes) return;
+    setIsSavingNotes(true);
+    setNotesError("");
+    try {
+      await onSaveNotes(interviewId, notesDraft.trim());
+    } catch (error) {
+      setNotesError(error instanceof Error ? error.message : "Could not save preparation notes.");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  }
+
   return (
     <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="practice">
       <PageHeader
@@ -168,6 +186,8 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                       onClick={() => {
                         const nextInterviewId = isOpen ? null : interview.id;
                         setOpenInterviewId(nextInterviewId);
+                        setNotesDraft(nextInterviewId ? interview.notes ?? "" : "");
+                        setNotesError("");
                         onSelectInterview(nextInterviewId);
                       }}
                     >
@@ -191,6 +211,26 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
 
                   {isOpen && (
                     <div className="border-t border-[#D6D6D2]">
+                      <section className="border-b border-[#E4E4E1] bg-[#FAFAF8] px-5 py-5 sm:px-6">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <h3 className="text-sm font-bold text-[#303030]">Preparation notes</h3>
+                            <p className="mt-1 text-xs text-[#686868]">Keep reminders, research, or talking points for this interview.</p>
+                          </div>
+                          <span className="text-xs font-medium text-[#8A8A86]">Optional</span>
+                        </div>
+                        {notesError && <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{notesError}</p>}
+                        <textarea
+                          aria-label={`Preparation notes for ${interview.company}`}
+                          className="mt-4 min-h-28 w-full resize-y rounded-md border border-[#D6D6D2] bg-white px-4 py-3 text-sm leading-6 text-[#303030] outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]"
+                          placeholder="Add reminders, company research, questions to ask, or anything else you want nearby..."
+                          value={notesDraft}
+                          onChange={(event) => setNotesDraft(event.target.value)}
+                        />
+                        <div className="mt-3 flex justify-end">
+                          <button className="rounded-md bg-[#F5822A] px-4 py-2 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSavingNotes || notesDraft.trim() === (interview.notes ?? "").trim()} type="button" onClick={() => void saveNotes(interview.id)}>{isSavingNotes ? "Saving notes..." : "Save notes"}</button>
+                        </div>
+                      </section>
                       {questionsError ? (
                         <div className="flex flex-col gap-3 bg-red-50 px-6 py-5 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
                           <span>{questionsError}</span>
@@ -267,6 +307,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             <label className="mt-5 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Company</RequiredLabel><input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.company} onChange={(event) => setCreateForm({ ...createForm, company: event.target.value })} /></label>
             <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Role</RequiredLabel><input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.role} onChange={(event) => setCreateForm({ ...createForm, role: event.target.value })} /></label>
             <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Interview type</RequiredLabel><select required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.interviewer_type} onChange={(event) => setCreateForm({ ...createForm, interviewer_type: event.target.value as PracticeInterviewForm["interviewer_type"] })}><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="technical">Technical</option></select></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><span>Notes <span className="font-normal text-[#686868]">(optional)</span></span><textarea className="min-h-28 resize-y rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal leading-6 outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" placeholder="Add reminders or preparation details..." value={createForm.notes} onChange={(event) => setCreateForm({ ...createForm, notes: event.target.value })} /></label>
             <footer className="mt-6 flex justify-end gap-3">
               <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canCreateInterview} type="submit">{isSaving ? "Creating..." : "Create prep interview"}</button>

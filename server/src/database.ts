@@ -123,6 +123,7 @@ db.exec(`
     id INTEGER PRIMARY KEY,
     company TEXT NOT NULL,
     role TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
     interviewer_type TEXT NOT NULL CHECK (
       interviewer_type IN ('recruiter', 'hiring_manager', 'technical')
     ),
@@ -157,5 +158,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS questions_type_id_idx
   ON questions(interviewer_type, id DESC);
 `);
+
+const practiceInterviewColumns = db
+  .prepare("PRAGMA table_info(practice_interviews)")
+  .all() as { name: string }[];
+
+if (!practiceInterviewColumns.some((column) => column.name === "notes")) {
+  db.exec("ALTER TABLE practice_interviews ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
+}
 
 export default db;

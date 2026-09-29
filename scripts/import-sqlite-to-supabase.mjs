@@ -44,7 +44,7 @@ for (const row of questionRows) {
 }
 
 for (const row of prepRows) {
-  const result = await admin.from("practice_interviews").insert({ user_id: user.id, company: row.company, role: row.role, interviewer_type: row.interviewer_type, created_at: row.created_at, updated_at: row.updated_at }).select("id").single();
+  const result = await admin.from("practice_interviews").insert({ user_id: user.id, company: row.company, role: row.role, notes: row.notes ?? "", interviewer_type: row.interviewer_type, created_at: row.created_at, updated_at: row.updated_at }).select("id").single();
   if (result.error) throw result.error;
   prepIds.set(row.id, result.data.id);
 }

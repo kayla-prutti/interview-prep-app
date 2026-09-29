@@ -558,6 +558,19 @@ function App({ accountEmail, onSignOut }: AppProps) {
     }
   }
 
+  async function savePracticeNotes(practiceInterviewId: number, notes: string) {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes }),
+    });
+    const result = (await response.json()) as { notes: string; updated_at: string } | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not save preparation notes.");
+    setPracticeInterviews((current) => current.map((interview) => interview.id === practiceInterviewId
+      ? { ...interview, notes: result.notes, updated_at: result.updated_at }
+      : interview));
+  }
+
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
     const sourceQuestion = questions.find((question) => question.id === questionId);
@@ -797,6 +810,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onRemoveQuestion={removePracticeQuestion}
             onRetry={() => loadPracticeInterviews().catch(() => undefined)}
             onSaveAnswer={savePracticeAnswer}
+            onSaveNotes={savePracticeNotes}
             onSelectInterview={selectPracticeInterview}
           />
         )}

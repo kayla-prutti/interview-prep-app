@@ -125,14 +125,14 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     if (query.get("view") === "options") {
       const { data, error } = await supabase
         .from("practice_interviews")
-        .select("id, company, role, interviewer_type, created_at, updated_at")
+        .select("id, company, role, notes, interviewer_type, created_at, updated_at")
         .order("updated_at", { ascending: false })
         .order("id", { ascending: false });
       return error ? failure(error.message, errorStatus(error.code)) : json((data ?? []).map((interview) => ({ ...interview, question_count: 0, answered_count: 0 })));
     }
     const { data, error } = await supabase
       .from("practice_interviews")
-      .select("id, company, role, interviewer_type, created_at, updated_at, practice_questions(id, answer)")
+      .select("id, company, role, notes, interviewer_type, created_at, updated_at, practice_questions(id, answer)")
       .order("updated_at", { ascending: false })
       .order("id", { ascending: false });
     if (error) return failure(error.message, errorStatus(error.code));
@@ -145,7 +145,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   }
   if (routePath === "/practice-interviews" && method === "POST") {
     const input = bodyOf(init);
-    const { data, error } = await supabase.from("practice_interviews").insert({ company: input.company, role: input.role, interviewer_type: input.interviewer_type }).select("id, company, role, interviewer_type, created_at, updated_at").single();
+    const { data, error } = await supabase.from("practice_interviews").insert({ company: input.company, role: input.role, notes: input.notes, interviewer_type: input.interviewer_type }).select("id, company, role, notes, interviewer_type, created_at, updated_at").single();
     return error ? failure(error.message, errorStatus(error.code)) : json({ ...data, question_count: 0, answered_count: 0 }, 201);
   }
 
@@ -190,6 +190,15 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   }
 
   match = routePath.match(/^\/practice-interviews\/(\d+)$/);
+  if (match && method === "PUT") {
+    const { data, error } = await supabase
+      .from("practice_interviews")
+      .update({ notes: bodyOf(init).notes })
+      .eq("id", Number(match[1]))
+      .select("id, notes, updated_at")
+      .single();
+    return error ? failure(error.message, errorStatus(error.code)) : json(data);
+  }
   if (match && method === "DELETE") {
     const { error } = await supabase.from("practice_interviews").delete().eq("id", Number(match[1]));
     return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
