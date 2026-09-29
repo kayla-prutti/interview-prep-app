@@ -32,28 +32,14 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const type: InterviewFilter = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType as InterviewerType : "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
-    const includeCounts = query.get("includeCounts") !== "false";
     let pageQuery = supabase.from("interviews").select("id, company, role, notes, interviewer_type, interview_date, created_at", { count: "exact" });
     if (search) pageQuery = pageQuery.ilike("company", `%${search}%`);
     if (type !== "all") pageQuery = pageQuery.eq("interviewer_type", type);
 
     try {
-      let typeQuery = supabase.from("interviews").select("interviewer_type");
-      if (search) typeQuery = typeQuery.ilike("company", `%${search}%`);
-      const [pageResult, typeResult] = await Promise.all([
-        pageQuery.order("interview_date", { ascending: false }).order("id", { ascending: false }).range(offset, offset + limit - 1),
-        includeCounts ? typeQuery : Promise.resolve({ data: null, error: null }),
-      ]);
+      const pageResult = await pageQuery.order("interview_date", { ascending: false }).order("id", { ascending: false }).range(offset, offset + limit - 1);
       if (pageResult.error) return failure(pageResult.error.message, errorStatus(pageResult.error.code));
-      if (typeResult.error) return failure(typeResult.error.message, errorStatus(typeResult.error.code));
-      const types = typeResult.data ?? [];
-      const counts = includeCounts ? {
-        all: types.length,
-        recruiter: types.filter((item) => item.interviewer_type === "recruiter").length,
-        hiring_manager: types.filter((item) => item.interviewer_type === "hiring_manager").length,
-        technical: types.filter((item) => item.interviewer_type === "technical").length,
-      } : undefined;
-      return json({ items: pageResult.data ?? [], total: pageResult.count ?? 0, ...(counts ? { counts } : {}) });
+      return json({ items: pageResult.data ?? [], total: pageResult.count ?? 0 });
     } catch (caughtError) {
       return failure(caughtError instanceof Error ? caughtError.message : "Could not load interviews.");
     }
@@ -66,7 +52,6 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const type: InterviewFilter = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType as InterviewerType : "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
-    const includeCounts = query.get("includeCounts") !== "false";
     let matchingQuestionIds: number[] | null = null;
 
     if (search) {
@@ -84,7 +69,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
         : { data: [], error: null };
       if (relatedMatches.error) return failure(relatedMatches.error.message, errorStatus(relatedMatches.error.code));
       matchingQuestionIds = [...new Set([...(textMatches.data ?? []).map((item) => item.id), ...(relatedMatches.data ?? []).map((item) => item.id)])];
-      if (matchingQuestionIds.length === 0) return json({ items: [], total: 0, ...(includeCounts ? { counts: { all: 0, recruiter: 0, hiring_manager: 0, technical: 0 } } : {}) });
+      if (matchingQuestionIds.length === 0) return json({ items: [], total: 0 });
     }
 
     let pageQuery = supabase.from("questions").select("id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type)", { count: "exact" });
@@ -92,26 +77,13 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     if (type !== "all") pageQuery = pageQuery.eq("interviews.interviewer_type", type);
 
     try {
-      let typeQuery = supabase.from("questions").select("id, interviews!inner(interviewer_type)");
-      if (matchingQuestionIds) typeQuery = typeQuery.in("id", matchingQuestionIds);
-      const [pageResult, typeResult] = await Promise.all([
-        pageQuery.order("id", { ascending: false }).range(offset, offset + limit - 1),
-        includeCounts ? typeQuery : Promise.resolve({ data: null, error: null }),
-      ]);
+      const pageResult = await pageQuery.order("id", { ascending: false }).range(offset, offset + limit - 1);
       if (pageResult.error) return failure(pageResult.error.message, errorStatus(pageResult.error.code));
-      if (typeResult.error) return failure(typeResult.error.message, errorStatus(typeResult.error.code));
       const items = (pageResult.data ?? []).map((row) => {
         const interview = row.interviews as unknown as { company: string; role: string; interviewer_type: Question["interviewer_type"] };
         return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type };
       });
-      const types = (typeResult.data ?? []).map((row) => (row.interviews as unknown as { interviewer_type: Question["interviewer_type"] }).interviewer_type);
-      const counts = includeCounts ? {
-        all: types.length,
-        recruiter: types.filter((typeName) => typeName === "recruiter").length,
-        hiring_manager: types.filter((typeName) => typeName === "hiring_manager").length,
-        technical: types.filter((typeName) => typeName === "technical").length,
-      } : undefined;
-      return json({ items, total: pageResult.count ?? 0, ...(counts ? { counts } : {}) });
+      return json({ items, total: pageResult.count ?? 0 });
     } catch (caughtError) {
       return failure(caughtError instanceof Error ? caughtError.message : "Could not load questions.");
     }

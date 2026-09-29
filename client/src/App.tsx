@@ -55,9 +55,7 @@ type EditableInterviewQuestion = {
   question_text: string;
 };
 
-type TypeCounts = Record<InterviewFilter, number>;
-type PagedResult<Item> = { items: Item[]; total: number; counts?: TypeCounts };
-const emptyTypeCounts: TypeCounts = { all: 0, recruiter: 0, hiring_manager: 0, technical: 0 };
+type PagedResult<Item> = { items: Item[]; total: number };
 
 function App({ accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
@@ -66,13 +64,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [activeInterviewType, setActiveInterviewType] = useState<InterviewFilter>("all");
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [interviewTotal, setInterviewTotal] = useState(0);
-  const [interviewCounts, setInterviewCounts] = useState<TypeCounts>(emptyTypeCounts);
   const [interviewPage, setInterviewPage] = useState(0);
   const [interviewPageSize, setInterviewPageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionTotal, setQuestionTotal] = useState(0);
-  const [questionCounts, setQuestionCounts] = useState<TypeCounts>(emptyTypeCounts);
   const [questionPage, setQuestionPage] = useState(0);
   const [questionPageSize, setQuestionPageSize] = useState(10);
   const [questionSearch, setQuestionSearch] = useState("");
@@ -103,8 +99,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
   const questionPageCache = useRef(new PageCache<PagedResult<Question>>());
-  const interviewCountCache = useRef(new Map<string, TypeCounts>());
-  const questionCountCache = useRef(new Map<string, TypeCounts>());
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
@@ -112,13 +106,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const loadInterviews = useCallback(async () => {
     const requestId = ++interviewRequest.current;
     const cacheKey = createPageCacheKey({ page: interviewPage, pageSize: interviewPageSize, search: debouncedSearch, type: activeInterviewType });
-    const countKey = debouncedSearch.trim().toLowerCase();
-    const cachedCounts = interviewCountCache.current.get(countKey);
     const cached = interviewPageCache.current.get(cacheKey);
     if (cached) {
       setInterviews(cached.items);
       setInterviewTotal(cached.total);
-      setInterviewCounts(cached.counts ?? cachedCounts ?? emptyTypeCounts);
       setError("");
       setIsLoading(false);
       return;
@@ -127,7 +118,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setIsLoading(true);
     setError("");
     try {
-      const parameters = new URLSearchParams({ offset: String(interviewPage * interviewPageSize), limit: String(interviewPageSize), search: debouncedSearch, type: activeInterviewType, includeCounts: String(!cachedCounts) });
+      const parameters = new URLSearchParams({ offset: String(interviewPage * interviewPageSize), limit: String(interviewPageSize), search: debouncedSearch, type: activeInterviewType });
       const result = await interviewPageCache.current.load(cacheKey, async () => {
         const response = await apiFetch(`${API_URL}/interviews/page?${parameters}`);
         if (!response.ok) throw new Error("Could not load interviews.");
@@ -136,8 +127,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId !== interviewRequest.current) return;
       setInterviews(result.items);
       setInterviewTotal(result.total);
-      if (result.counts) interviewCountCache.current.set(countKey, result.counts);
-      setInterviewCounts(result.counts ?? cachedCounts ?? emptyTypeCounts);
     } catch (caughtError) {
       if (requestId !== interviewRequest.current) return;
       setError(caughtError instanceof Error ? caughtError.message : "Could not load interviews.");
@@ -149,13 +138,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const loadQuestions = useCallback(async () => {
     const requestId = ++questionRequest.current;
     const cacheKey = createPageCacheKey({ page: questionPage, pageSize: questionPageSize, search: debouncedQuestionSearch, type: activeQuestionType });
-    const countKey = debouncedQuestionSearch.trim().toLowerCase();
-    const cachedCounts = questionCountCache.current.get(countKey);
     const cached = questionPageCache.current.get(cacheKey);
     if (cached) {
       setQuestions(cached.items);
       setQuestionTotal(cached.total);
-      setQuestionCounts(cached.counts ?? cachedCounts ?? emptyTypeCounts);
       setQuestionsError("");
       setAreQuestionsLoading(false);
       return;
@@ -164,7 +150,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setAreQuestionsLoading(true);
     setQuestionsError("");
     try {
-      const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType, includeCounts: String(!cachedCounts) });
+      const parameters = new URLSearchParams({ offset: String(questionPage * questionPageSize), limit: String(questionPageSize), search: debouncedQuestionSearch, type: activeQuestionType });
       const result = await questionPageCache.current.load(cacheKey, async () => {
         const response = await apiFetch(`${API_URL}/questions/page?${parameters}`);
         if (!response.ok) throw new Error("Could not load the question library.");
@@ -173,8 +159,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId !== questionRequest.current) return;
       setQuestions(result.items);
       setQuestionTotal(result.total);
-      if (result.counts) questionCountCache.current.set(countKey, result.counts);
-      setQuestionCounts(result.counts ?? cachedCounts ?? emptyTypeCounts);
     } catch (caughtError) {
       if (requestId !== questionRequest.current) return;
       setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load the question library.");
@@ -361,8 +345,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setIsEditingDetail(false);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
-      interviewCountCache.current.clear();
-      questionCountCache.current.clear();
       void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not update interview.");
@@ -388,8 +370,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setSelectedInterview(null);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
-      interviewCountCache.current.clear();
-      questionCountCache.current.clear();
       if (interviewPage === 0) void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not delete interview.");
@@ -441,8 +421,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
       setIsModalOpen(false);
       interviewPageCache.current.clear();
       questionPageCache.current.clear();
-      interviewCountCache.current.clear();
-      questionCountCache.current.clear();
       if (interviewPage === 0) void loadInterviews();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Could not save interview.");
@@ -540,13 +518,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const interviewTabs: FolderTab<InterviewFilter>[] = interviewSections.map((section) => ({
     value: section.type,
     label: section.title,
-    count: interviewCounts[section.type],
   }));
 
   const questionTabs: FolderTab<InterviewFilter>[] = questionLibrarySections.map((section) => ({
     value: section.type,
     label: section.title,
-    count: questionCounts[section.type],
   }));
 
   const accountControl = accountEmail && onSignOut
@@ -583,7 +559,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             <SearchField ariaLabel="Search by company name" className="mt-7 md:mt-5" placeholder="Search by company name" value={search} onChange={(value) => { setSearch(value); setInterviewPage(0); }} onClear={() => { setSearch(""); setInterviewPage(0); }} />
 
             <div className="mt-7 md:mt-5">
-              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" countLabel="interviews" panelId="interview-folder-panel" tabs={interviewTabs} onChange={(value) => { setActiveInterviewType(value); setInterviewPage(0); }} />
+              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" panelId="interview-folder-panel" tabs={interviewTabs} onChange={(value) => { setActiveInterviewType(value); setInterviewPage(0); }} />
             </div>
 
             <section className="relative z-20 flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)]" id="interview-folder-panel" role="tabpanel">
@@ -626,7 +602,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
             {!areQuestionsLoading && !questionsError && (
               <div className="mt-10 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
-                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" countLabel="questions" panelId="question-folder-panel" tabs={questionTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
+                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" panelId="question-folder-panel" tabs={questionTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
 
                 <section className="relative z-20 flex min-h-[420px] flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)] md:min-h-0 md:flex-1" id="question-folder-panel" role="tabpanel">
                   <header className="flex shrink-0 flex-col gap-3 border-b border-[#D6D6D2] px-6 py-5 sm:flex-row sm:items-start sm:justify-between">

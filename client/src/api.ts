@@ -67,21 +67,13 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     const type = query.get("type") ?? "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
-    const includeCounts = query.get("includeCounts") !== "false";
     const matchingSearch = store.interviews.filter((interview) => search === "" || interview.company.toLowerCase().includes(search));
     const matchingRows = matchingSearch
       .filter((interview) => type === "all" || interview.interviewer_type === type)
       .sort((a, b) => (b.interview_date ?? "").localeCompare(a.interview_date ?? "") || b.id - a.id);
-    const counts = includeCounts ? {
-      all: matchingSearch.length,
-      recruiter: matchingSearch.filter((item) => item.interviewer_type === "recruiter").length,
-      hiring_manager: matchingSearch.filter((item) => item.interviewer_type === "hiring_manager").length,
-      technical: matchingSearch.filter((item) => item.interviewer_type === "technical").length,
-    } : undefined;
     return Promise.resolve(json({
       items: matchingRows.slice(offset, offset + limit),
       total: matchingRows.length,
-      ...(counts ? { counts } : {}),
     }));
   }
   if (path === "/interviews" && method === "POST") {
@@ -111,7 +103,6 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     const type = query.get("type") ?? "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
-    const includeCounts = query.get("includeCounts") !== "false";
     const matchingSearch = store.questions.flatMap((question) => {
       const interview = store.interviews.find((item) => item.id === question.interview_id);
       if (!interview) return [];
@@ -119,16 +110,9 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       return search === "" || [row.question_text, row.company, row.role].some((value) => value.toLowerCase().includes(search)) ? [row] : [];
     });
     const matchingRows = matchingSearch.filter((question) => type === "all" || question.interviewer_type === type).sort((a, b) => b.id - a.id);
-    const counts = includeCounts ? {
-      all: matchingSearch.length,
-      recruiter: matchingSearch.filter((item) => item.interviewer_type === "recruiter").length,
-      hiring_manager: matchingSearch.filter((item) => item.interviewer_type === "hiring_manager").length,
-      technical: matchingSearch.filter((item) => item.interviewer_type === "technical").length,
-    } : undefined;
     return Promise.resolve(json({
       items: matchingRows.slice(offset, offset + limit),
       total: matchingRows.length,
-      ...(counts ? { counts } : {}),
     }));
   }
   if (path === "/practice-interviews" && method === "GET") return Promise.resolve(json(practiceInterviews(store)));
