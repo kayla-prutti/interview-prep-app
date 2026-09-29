@@ -10,6 +10,7 @@ type DataTableProps<RowData extends object> = {
   columns: ColDef<RowData>[];
   rows: RowData[];
   context?: object;
+  onRowClick?: (row: RowData) => void;
   refreshKey?: unknown;
 };
 
@@ -30,7 +31,7 @@ const appGridTheme = themeQuartz.withParams({
   wrapperBorderRadius: 6,
 });
 
-export function DataTable<RowData extends object>({ columns, rows, context, refreshKey }: DataTableProps<RowData>) {
+export function DataTable<RowData extends object>({ columns, rows, context, onRowClick, refreshKey }: DataTableProps<RowData>) {
   const gridRef = useRef<AgGridReact<RowData>>(null);
 
   useEffect(() => {
@@ -52,8 +53,14 @@ export function DataTable<RowData extends object>({ columns, rows, context, refr
             paginationPageSize={10}
             paginationPageSizeSelector={[10, 20, 50]}
             rowData={rows}
+            rowClass={onRowClick ? "cursor-pointer" : undefined}
             rowHeight={56}
             theme={appGridTheme}
+            onRowClicked={(event) => {
+              const target = event.event?.target;
+              if (!event.data || (target instanceof Element && target.closest("button"))) return;
+              onRowClick?.(event.data);
+            }}
           />
         </div>
       </AgGridProvider>

@@ -513,7 +513,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               {!isLoading && !error && filteredInterviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
 
               {!isLoading && !error && filteredInterviews.length > 0 && (
-                <DataTable columns={interviewColumns} context={gridContext} rows={filteredInterviews} />
+                <DataTable columns={interviewColumns} context={gridContext} rows={filteredInterviews} onRowClick={(interview) => void openInterview(interview)} />
               )}
             </section>
             </div>
