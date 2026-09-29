@@ -209,12 +209,13 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
       }));
     }
     if (method === "POST") {
-      const sourceQuestionId = Number(bodyOf(init).source_question_id);
-      const sourceResult = await supabase.from("questions").select("id, question_text").eq("id", sourceQuestionId).single();
-      if (sourceResult.error) return failure(sourceResult.error.message, errorStatus(sourceResult.error.code));
-      const orderResult = await supabase.from("practice_questions").select("sort_order").eq("practice_interview_id", practiceInterviewId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
-      if (orderResult.error) return failure(orderResult.error.message, errorStatus(orderResult.error.code));
-      const { data, error } = await supabase.from("practice_questions").insert({ practice_interview_id: practiceInterviewId, source_question_id: sourceQuestionId, question_text: sourceResult.data.question_text, sort_order: (orderResult.data?.sort_order ?? -1) + 1 }).select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").single();
+      const input = bodyOf(init);
+      const { data, error } = await supabase.from("practice_questions").insert({
+        practice_interview_id: practiceInterviewId,
+        source_question_id: Number(input.source_question_id),
+        question_text: String(input.question_text ?? "").trim(),
+        sort_order: Number(input.sort_order) || 0,
+      }).select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").single();
       if (error?.code === "23505") return failure("Question is already in this prep interview.", 409);
       return error ? failure(error.message, errorStatus(error.code)) : json(data, 201);
     }

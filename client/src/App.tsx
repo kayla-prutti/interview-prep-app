@@ -537,6 +537,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
+    const sourceQuestion = questions.find((question) => question.id === questionId);
+    if (!sourceQuestion) throw new Error("Question is not available on this page.");
     const practiceInterviewId = activePracticeId;
     const pendingKey = `${practiceInterviewId}:${questionId}`;
     if (pendingPracticeAddsRef.current.has(pendingKey)) return;
@@ -547,7 +549,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
       const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_question_id: questionId }),
+        body: JSON.stringify({
+          source_question_id: questionId,
+          question_text: sourceQuestion.question_text,
+          sort_order: Math.floor(Date.now() / 1000),
+        }),
       });
       const result = (await response.json()) as PracticeQuestion | { error: string };
       if (response.status !== 409 && (!response.ok || "error" in result)) throw new Error("error" in result ? result.error : "Could not add the question.");
