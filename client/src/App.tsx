@@ -669,8 +669,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
                     {interviewerLabel(selectedInterview.interviewer_type)}
                   </span>
                   <div className="flex gap-2">
-                    <button aria-label="Edit interview" className="grid h-9 w-9 place-items-center rounded-md border border-[#D6D6D2] text-stone-600 hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit interview" type="button" onClick={() => setIsEditingDetail(true)}><PenIcon /></button>
-                    <button aria-label="Delete interview" className="grid h-9 w-9 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700" title="Delete interview" type="button" onClick={() => setIsDeleteModalOpen(true)}><BinIcon /></button>
+                    <button aria-label="Edit interview" className="grid h-9 w-9 cursor-pointer place-items-center rounded-md border border-[#D6D6D2] text-stone-600 hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit interview" type="button" onClick={() => setIsEditingDetail(true)}><PenIcon /></button>
+                    <button aria-label="Delete interview" className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700" title="Delete interview" type="button" onClick={() => setIsDeleteModalOpen(true)}><BinIcon /></button>
                   </div>
                 </div>
 

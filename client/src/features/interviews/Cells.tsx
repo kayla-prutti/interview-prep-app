@@ -30,9 +30,9 @@ export function InterviewActionsCell({ context, data }: CustomCellRendererProps<
   const actions = context as InterviewGridContext;
   return (
     <div className="flex h-full items-center gap-1">
-      <button aria-label={`View ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onView(data)} title="View interview" type="button"><EyeIcon /></button>
-      <button aria-label={`Edit ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onEdit(data)} title="Edit interview" type="button"><PenIcon /></button>
-      <button aria-label={`Delete ${data.company} interview`} className="grid h-8 w-8 place-items-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-700" onClick={() => actions.onDelete(data)} title="Delete interview" type="button"><BinIcon /></button>
+      <button aria-label={`View ${data.company} interview`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onView(data)} title="View interview" type="button"><EyeIcon /></button>
+      <button aria-label={`Edit ${data.company} interview`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-stone-500 hover:bg-[#FFE4D1] hover:text-[#C95712]" onClick={() => actions.onEdit(data)} title="Edit interview" type="button"><PenIcon /></button>
+      <button aria-label={`Delete ${data.company} interview`} className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-700" onClick={() => actions.onDelete(data)} title="Delete interview" type="button"><BinIcon /></button>
     </div>
   );
 }
