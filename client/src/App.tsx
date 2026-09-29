@@ -594,6 +594,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   const questionGridContext: QuestionGridContext = {
     canAddToPractice: activePracticeId !== null,
+    practiceName: practiceInterviews.find((interview) => interview.id === activePracticeId)?.company,
     isAddedToPractice: (questionId) => practiceSourceQuestionIds.has(questionId),
     isAddingToPractice: (questionId) => activePracticeId !== null && pendingPracticeAdds.has(`${activePracticeId}:${questionId}`),
     onAddToPractice: (questionId) => void addQuestionToPractice(questionId).catch((caughtError) => setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not add the question.")),
@@ -705,7 +706,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               )}
 
               <div className="flex flex-col gap-2 border-t border-[#E4E4E1] px-4 py-3 text-xs text-[#686868] sm:flex-row sm:items-center sm:justify-between">
-                <p>{activePracticeInterview ? 'Use “To practice” to add a question to this prep.' : "Choose a prep before using the question actions below."}</p>
+                <p>{activePracticeInterview ? `Question actions now show “Add to ${activePracticeInterview.company}”.` : "Choose a prep before using the question actions below."}</p>
                 <button className="w-fit cursor-pointer font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsPracticePickerOpen(false); setPage("practice"); }}>Manage prep interviews</button>
               </div>
             </div>
