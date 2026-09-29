@@ -176,16 +176,18 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   if (match) {
     const practiceInterviewId = Number(match[1]);
     if (method === "GET") {
-      const { data, error } = await supabase.from("practice_questions").select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").eq("practice_interview_id", practiceInterviewId).order("sort_order").order("id");
+      const { data, error } = await supabase
+        .from("practice_questions")
+        .select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at, source_question:questions(interviews(company))")
+        .eq("practice_interview_id", practiceInterviewId)
+        .order("sort_order")
+        .order("id");
       if (error) return failure(error.message, errorStatus(error.code));
-      const sourceIds = (data ?? []).map((item) => item.source_question_id).filter((id): id is number => id !== null);
-      const companies = new Map<number, string>();
-      if (sourceIds.length > 0) {
-        const sourceResult = await supabase.from("questions").select("id, interview_id, interviews!inner(company)").in("id", sourceIds);
-        if (sourceResult.error) return failure(sourceResult.error.message, errorStatus(sourceResult.error.code));
-        for (const row of sourceResult.data ?? []) companies.set(row.id, (row.interviews as unknown as { company: string }).company);
-      }
-      return json((data ?? []).map((question) => ({ ...question, source_company: question.source_question_id ? companies.get(question.source_question_id) : undefined })));
+      return json((data ?? []).map((question) => {
+        const source = question.source_question as unknown as { interviews: { company: string } | null } | null;
+        const { source_question: _sourceQuestion, ...practiceQuestion } = question;
+        return { ...practiceQuestion, source_company: source?.interviews?.company };
+      }));
     }
     if (method === "POST") {
       const sourceQuestionId = Number(bodyOf(init).source_question_id);
