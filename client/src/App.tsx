@@ -564,6 +564,20 @@ function App({ accountEmail, onSignOut }: AppProps) {
     }
   }
 
+  async function addCustomQuestionToPractice(practiceInterviewId: number, questionText: string) {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}/questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_text: questionText, sort_order: Math.floor(Date.now() / 1000) }),
+    });
+    const result = (await response.json()) as PracticeQuestion | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not add the custom question.");
+    if (activePracticeId === practiceInterviewId) setPracticeQuestions((current) => [...current, result]);
+    const cachedQuestions = practiceQuestionCache.current.get(practiceInterviewId);
+    if (cachedQuestions) practiceQuestionCache.current.set(practiceInterviewId, [...cachedQuestions, result]);
+    setPracticeInterviews((current) => current.map((interview) => interview.id === practiceInterviewId ? { ...interview, question_count: interview.question_count + 1, updated_at: new Date().toISOString() } : interview));
+  }
+
   async function savePracticeAnswer(practiceQuestionId: number, answer: string) {
     if (!activePracticeId) return;
     const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, {
@@ -742,6 +756,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             interviews={practiceInterviews}
             isLoadingQuestions={arePracticeQuestionsLoading}
             questions={practiceQuestions}
+            onAddCustomQuestion={addCustomQuestionToPractice}
             onBrowseQuestions={(interviewId) => {
               selectPracticeInterviewForLibrary(interviewId);
               setPage("questions");

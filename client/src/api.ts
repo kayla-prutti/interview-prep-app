@@ -223,12 +223,17 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       return Promise.resolve(json(selected));
     }
     if (method === "POST") {
-      const sourceQuestionId = Number(bodyOf(init).source_question_id);
-      const source = store.questions.find((question) => question.id === sourceQuestionId);
-      if (!source) return Promise.resolve(json({ error: "Question not found." }, 404));
-      if (store.practiceQuestions.some((question) => question.practice_interview_id === practiceInterviewId && question.source_question_id === sourceQuestionId)) return Promise.resolve(json({ error: "Question is already in this prep interview." }, 409));
+      const input = bodyOf(init);
+      const requestedSourceId = Number(input.source_question_id);
+      const sourceQuestionId = Number.isInteger(requestedSourceId) && requestedSourceId > 0 ? requestedSourceId : null;
+      const source = sourceQuestionId ? store.questions.find((question) => question.id === sourceQuestionId) : null;
+      if (sourceQuestionId && !source) return Promise.resolve(json({ error: "Question not found." }, 404));
+      if (sourceQuestionId && store.practiceQuestions.some((question) => question.practice_interview_id === practiceInterviewId && question.source_question_id === sourceQuestionId)) return Promise.resolve(json({ error: "Question is already in this prep interview." }, 409));
+      const customQuestionText = String(input.question_text ?? "").trim();
+      const savedQuestionText = source?.question_text ?? customQuestionText;
+      if (savedQuestionText === "") return Promise.resolve(json({ error: "Question text is required." }, 400));
       const selected = store.practiceQuestions.filter((question) => question.practice_interview_id === practiceInterviewId);
-      const question: PracticeQuestion = { id: nextId(store.practiceQuestions), practice_interview_id: practiceInterviewId, source_question_id: sourceQuestionId, question_text: source.question_text, answer: "", sort_order: selected.length, created_at: now, updated_at: now };
+      const question: PracticeQuestion = { id: nextId(store.practiceQuestions), practice_interview_id: practiceInterviewId, source_question_id: sourceQuestionId, question_text: savedQuestionText, answer: "", sort_order: selected.length, created_at: now, updated_at: now };
       store.practiceQuestions.push(question);
       const interview = store.practiceInterviews.find((item) => item.id === practiceInterviewId);
       if (interview) interview.updated_at = now;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from "../database.js";
-import { interviewerTypes, positiveId, type InterviewerType } from "../lib/validation.js";
+import { interviewerTypes, positiveId, questionText, type InterviewerType } from "../lib/validation.js";
 
 export const practiceRouter = Router();
 
@@ -75,17 +75,19 @@ practiceRouter.post("/:practiceInterviewId/questions", (req, res) => {
   const practiceInterviewId = positiveId(req.params.practiceInterviewId);
   const sourceQuestionId = positiveId(String((req.body as { source_question_id?: unknown } | null)?.source_question_id ?? ""));
   if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
-  if (!sourceQuestionId) { res.status(400).json({ error: "Source question ID is required." }); return; }
   if (!db.prepare("SELECT id FROM practice_interviews WHERE id = ?").get(practiceInterviewId)) { res.status(404).json({ error: "Prep interview not found." }); return; }
 
-  const source = db.prepare("SELECT question_text FROM questions WHERE id = ?").get(sourceQuestionId) as { question_text: string } | undefined;
-  if (!source) { res.status(404).json({ error: "Question not found." }); return; }
+  const source = sourceQuestionId ? db.prepare("SELECT question_text FROM questions WHERE id = ?").get(sourceQuestionId) as { question_text: string } | undefined : undefined;
+  if (sourceQuestionId && !source) { res.status(404).json({ error: "Question not found." }); return; }
+  const customQuestion = sourceQuestionId ? null : questionText(req.body);
+  if (customQuestion && !customQuestion.ok) { res.status(400).json({ error: customQuestion.error }); return; }
+  const savedQuestionText = source?.question_text ?? (customQuestion?.ok ? customQuestion.value : "");
 
   try {
     const result = db.prepare(`
       INSERT INTO practice_questions (practice_interview_id, source_question_id, question_text, sort_order)
       VALUES (?, ?, ?, COALESCE((SELECT MAX(sort_order) + 1 FROM practice_questions WHERE practice_interview_id = ?), 0))
-    `).run(practiceInterviewId, sourceQuestionId, source.question_text, practiceInterviewId);
+    `).run(practiceInterviewId, sourceQuestionId, savedQuestionText, practiceInterviewId);
     db.prepare("UPDATE practice_interviews SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(practiceInterviewId);
     res.status(201).json(db.prepare("SELECT * FROM practice_questions WHERE id = ?").get(result.lastInsertRowid));
   } catch (error) {

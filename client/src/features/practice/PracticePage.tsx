@@ -10,6 +10,7 @@ type PracticePageProps = {
   interviews: PracticeInterview[];
   isLoadingQuestions: boolean;
   questions: PracticeQuestion[];
+  onAddCustomQuestion: (interviewId: number, questionText: string) => Promise<void>;
   onBrowseQuestions: (interviewId: number) => void;
   onCreateInterview: (form: PracticeInterviewForm) => Promise<void>;
   onDeleteInterview: (interviewId: number) => Promise<void>;
@@ -24,7 +25,7 @@ const emptyPracticeForm: PracticeInterviewForm = {
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ accountControl, interviews, isLoadingQuestions, questions, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ accountControl, interviews, isLoadingQuestions, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
@@ -34,6 +35,8 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
   const [interviewToDelete, setInterviewToDelete] = useState<PracticeInterview | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<PracticeQuestion | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
+  const [customQuestionInterviewId, setCustomQuestionInterviewId] = useState<number | null>(null);
+  const [customQuestionText, setCustomQuestionText] = useState("");
   const canCreateInterview = createForm.company.trim() !== ""
     && createForm.role.trim() !== ""
     && createForm.interviewer_type.trim() !== "";
@@ -68,6 +71,21 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
       setSelectedQuestion(null);
     } catch (error) {
       setModalError(error instanceof Error ? error.message : "Could not save the answer.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function addCustomQuestion() {
+    if (!customQuestionInterviewId || customQuestionText.trim() === "" || isSaving) return;
+    setIsSaving(true);
+    setModalError("");
+    try {
+      await onAddCustomQuestion(customQuestionInterviewId, customQuestionText.trim());
+      setCustomQuestionInterviewId(null);
+      setCustomQuestionText("");
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : "Could not add the custom question.");
     } finally {
       setIsSaving(false);
     }
@@ -146,13 +164,20 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
                       ) : questions.length === 0 ? (
                         <div className="px-6 py-10 text-center">
                           <p className="text-base font-semibold text-[#686868]">No questions</p>
-                          <button className="mt-4 rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => onBrowseQuestions(interview.id)}>+ Add question</button>
+                          <p className="mt-1 text-sm text-[#8A8A86]">Write a new question or choose one you have already saved.</p>
+                          <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+                            <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setModalError(""); setCustomQuestionText(""); setCustomQuestionInterviewId(interview.id); }}>+ Custom question</button>
+                            <button className="rounded-md border border-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => onBrowseQuestions(interview.id)}>Add from library</button>
+                          </div>
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center justify-between border-b border-[#E4E4E1] px-5 py-3 sm:px-6">
+                          <div className="flex flex-col gap-3 border-b border-[#E4E4E1] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#686868]">Selected questions</p>
-                            <button className="rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => onBrowseQuestions(interview.id)}>+ Add question</button>
+                            <div className="flex flex-wrap gap-2">
+                              <button className="rounded-md bg-[#F5822A] px-3 py-2 text-xs font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setModalError(""); setCustomQuestionText(""); setCustomQuestionInterviewId(interview.id); }}>+ Custom question</button>
+                              <button className="rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => onBrowseQuestions(interview.id)}>Add from library</button>
+                            </div>
                           </div>
                           <ol className="divide-y divide-[#E4E4E1]">
                             {questions.map((question, index) => {
@@ -225,6 +250,24 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
               <button className="rounded-md bg-red-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-60" disabled={isDeleting} type="button" onClick={() => void deleteInterview()}>{isDeleting ? "Deleting..." : "Delete prep interview"}</button>
             </footer>
           </section>
+        </div>
+      )}
+
+      {customQuestionInterviewId && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
+          <form className="w-full max-w-xl rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void addCustomQuestion(); }}>
+            <header className="border-b border-[#D6D6D2] pb-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Custom preparation question</p>
+              <h2 className="mt-1 text-2xl font-bold text-[#202020]">Add your own question</h2>
+              <p className="mt-2 text-sm leading-6 text-[#686868]">This question belongs only to this prep interview. It will not be added to the Question Library.</p>
+            </header>
+            {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{modalError}</p>}
+            <label className="mt-5 grid gap-2 text-sm font-bold text-[#303030]"><RequiredLabel>Question</RequiredLabel><textarea autoFocus className="min-h-32 resize-y rounded-md border border-[#D6D6D2] px-4 py-3 font-normal leading-6 outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" placeholder="Type the question you want to practice..." value={customQuestionText} onChange={(event) => setCustomQuestionText(event.target.value)} /></label>
+            <footer className="mt-6 flex justify-end gap-3">
+              <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" disabled={isSaving} type="button" onClick={() => { setCustomQuestionInterviewId(null); setCustomQuestionText(""); }}>Cancel</button>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || customQuestionText.trim() === ""} type="submit">{isSaving ? "Adding..." : "Add custom question"}</button>
+            </footer>
+          </form>
         </div>
       )}
 

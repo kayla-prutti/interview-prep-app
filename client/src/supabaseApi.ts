@@ -214,9 +214,10 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     }
     if (method === "POST") {
       const input = bodyOf(init);
+      const requestedSourceId = Number(input.source_question_id);
       const { data, error } = await supabase.from("practice_questions").insert({
         practice_interview_id: practiceInterviewId,
-        source_question_id: Number(input.source_question_id),
+        source_question_id: Number.isInteger(requestedSourceId) && requestedSourceId > 0 ? requestedSourceId : null,
         question_text: String(input.question_text ?? "").trim(),
         sort_order: Number(input.sort_order) || 0,
       }).select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").single();
