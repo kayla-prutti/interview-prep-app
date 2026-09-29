@@ -167,6 +167,12 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const practiceSourceQuestionIds = new Set(practiceQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null));
 
   const questionRows = form.questions ?? [""];
+  const canSaveInterview = form.company.trim() !== ""
+    && form.role.trim() !== ""
+    && form.notes.trim() !== ""
+    && form.interviewer_type.trim() !== ""
+    && form.interview_date.trim() !== ""
+    && questionRows.some((question) => question.trim() !== "");
 
   function closeGuide() {
     localStorage.setItem("i-prep-guide-seen-v1", "true");
@@ -325,6 +331,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canSaveInterview || isSaving) return;
     setIsSaving(true);
     setError("");
 
@@ -640,7 +647,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
             <footer className="mt-6 flex justify-end gap-3">
               <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-wait disabled:opacity-70" disabled={isSaving}>{isSaving ? "Saving..." : "Save interview"}</button>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canSaveInterview}>{isSaving ? "Saving..." : "Save interview"}</button>
             </footer>
           </form>
         </div>

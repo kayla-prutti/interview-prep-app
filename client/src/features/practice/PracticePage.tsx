@@ -33,6 +33,9 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
   const [interviewToDelete, setInterviewToDelete] = useState<PracticeInterview | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<PracticeQuestion | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
+  const canCreateInterview = createForm.company.trim() !== ""
+    && createForm.role.trim() !== ""
+    && createForm.interviewer_type.trim() !== "";
 
   function openAnswerModal(question: PracticeQuestion) {
     setSelectedQuestion(question);
@@ -41,6 +44,7 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
   }
 
   async function createInterview() {
+    if (!canCreateInterview || isSaving) return;
     setIsSaving(true);
     setModalError("");
     try {
@@ -200,7 +204,7 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
             <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]">Interview type<select className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.interviewer_type} onChange={(event) => setCreateForm({ ...createForm, interviewer_type: event.target.value as PracticeInterviewForm["interviewer_type"] })}><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="technical">Technical</option></select></label>
             <footer className="mt-6 flex justify-end gap-3">
               <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</button>
-              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-60" disabled={isSaving} type="submit">{isSaving ? "Creating..." : "Create prep interview"}</button>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canCreateInterview} type="submit">{isSaving ? "Creating..." : "Create prep interview"}</button>
             </footer>
           </form>
         </div>
