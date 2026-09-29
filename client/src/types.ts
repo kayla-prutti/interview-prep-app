@@ -38,7 +38,6 @@ export type PracticeInterview = {
   id: number;
   company: string;
   role: string;
-  notes: string;
   interviewer_type: InterviewerType;
   question_count: number;
   answered_count: number;
@@ -61,6 +60,18 @@ export type PracticeQuestion = {
 export type PracticeInterviewForm = {
   company: string;
   role: string;
-  notes: string;
   interviewer_type: InterviewerType;
+};
+
+export type PreparationNote = {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PreparationNoteForm = {
+  title: string;
+  content: string;
 };

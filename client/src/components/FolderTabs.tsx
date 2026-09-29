@@ -28,7 +28,7 @@ export function FolderTabs<Value extends string>({ activeValue, ariaLabel, panel
             key={tab.value}
             role="tab"
             style={{ backgroundColor: folderColor }}
-            title={`Filter by ${tab.label} interviews`}
+            title={`Open ${tab.label}`}
             type="button"
             onClick={() => onChange(tab.value)}
           >

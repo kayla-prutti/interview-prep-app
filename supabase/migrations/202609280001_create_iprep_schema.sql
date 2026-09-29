@@ -27,7 +27,6 @@ create table public.practice_interviews (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   company text not null,
   role text not null,
-  notes text not null default '',
   interviewer_type text not null check (interviewer_type in ('recruiter', 'hiring_manager', 'technical')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

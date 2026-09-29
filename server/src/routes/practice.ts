@@ -28,7 +28,7 @@ practiceRouter.get("/", (req, res) => {
 });
 
 practiceRouter.post("/", (req, res) => {
-  const { company, role, notes, interviewer_type } = (req.body ?? {}) as Record<string, unknown>;
+  const { company, role, interviewer_type } = (req.body ?? {}) as Record<string, unknown>;
   if (typeof company !== "string" || company.trim() === "") { res.status(400).json({ error: "Company is required." }); return; }
   if (typeof role !== "string" || role.trim() === "") { res.status(400).json({ error: "Role is required." }); return; }
   if (typeof interviewer_type !== "string" || !interviewerTypes.includes(interviewer_type as InterviewerType)) {
@@ -37,24 +37,14 @@ practiceRouter.post("/", (req, res) => {
   }
 
   const result = db.prepare(`
-    INSERT INTO practice_interviews (company, role, notes, interviewer_type)
-    VALUES (?, ?, ?, ?)
-  `).run(company.trim(), role.trim(), typeof notes === "string" ? notes.trim() : "", interviewer_type);
+    INSERT INTO practice_interviews (company, role, interviewer_type)
+    VALUES (?, ?, ?)
+  `).run(company.trim(), role.trim(), interviewer_type);
 
   res.status(201).json(db.prepare(`
     SELECT practice_interviews.*, 0 AS question_count, 0 AS answered_count
     FROM practice_interviews WHERE id = ?
   `).get(result.lastInsertRowid));
-});
-
-practiceRouter.put("/:practiceInterviewId", (req, res) => {
-  const practiceInterviewId = positiveId(req.params.practiceInterviewId);
-  if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
-  const notes = (req.body as Record<string, unknown> | undefined)?.notes;
-  if (typeof notes !== "string") { res.status(400).json({ error: "Notes must be text." }); return; }
-  const result = db.prepare("UPDATE practice_interviews SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(notes.trim(), practiceInterviewId);
-  if (result.changes === 0) { res.status(404).json({ error: "Prep interview not found." }); return; }
-  res.json(db.prepare("SELECT id, notes, updated_at FROM practice_interviews WHERE id = ?").get(practiceInterviewId));
 });
 
 practiceRouter.delete("/:practiceInterviewId", (req, res) => {

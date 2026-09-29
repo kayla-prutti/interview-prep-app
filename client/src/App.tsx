@@ -42,6 +42,8 @@ import type {
   PracticeInterview,
   PracticeInterviewForm,
   PracticeQuestion,
+  PreparationNote,
+  PreparationNoteForm,
   Question,
 } from "./types";
 
@@ -86,6 +88,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
   const [practiceError, setPracticeError] = useState("");
   const [practiceQuestionsError, setPracticeQuestionsError] = useState("");
+  const [preparationNotes, setPreparationNotes] = useState<PreparationNote[]>([]);
+  const [arePreparationNotesLoading, setArePreparationNotesLoading] = useState(false);
+  const [preparationNotesError, setPreparationNotesError] = useState("");
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
   const [questionsError, setQuestionsError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +120,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const practiceQuestionCache = useRef(new Map<number, PracticeQuestion[]>());
   const practiceQuestionRequests = useRef(new Map<number, Promise<PracticeQuestion[]>>());
   const pendingPracticeAddsRef = useRef(new Set<string>());
+  const preparationNotesLoaded = useRef(false);
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
 
@@ -247,6 +253,23 @@ function App({ accountEmail, onSignOut }: AppProps) {
     } finally {
       practiceQuestionRequests.current.delete(practiceInterviewId);
       setArePracticeQuestionsLoading(false);
+    }
+  }, []);
+
+  const loadPreparationNotes = useCallback(async (force = false) => {
+    if (preparationNotesLoaded.current && !force) return;
+    setArePreparationNotesLoading(true);
+    setPreparationNotesError("");
+    try {
+      const response = await apiFetch(`${API_URL}/preparation-notes`);
+      if (!response.ok) throw new Error("Could not load preparation notes.");
+      setPreparationNotes((await response.json()) as PreparationNote[]);
+      preparationNotesLoaded.current = true;
+    } catch (caughtError) {
+      setPreparationNotesError(caughtError instanceof Error ? caughtError.message : "Could not load preparation notes.");
+      throw caughtError;
+    } finally {
+      setArePreparationNotesLoading(false);
     }
   }, []);
 
@@ -558,17 +581,33 @@ function App({ accountEmail, onSignOut }: AppProps) {
     }
   }
 
-  async function savePracticeNotes(practiceInterviewId: number, notes: string) {
-    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, {
+  async function createPreparationNote(noteForm: PreparationNoteForm) {
+    const response = await apiFetch(`${API_URL}/preparation-notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(noteForm),
+    });
+    const result = (await response.json()) as PreparationNote | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not create the note.");
+    setPreparationNotes((current) => [result, ...current]);
+    preparationNotesLoaded.current = true;
+  }
+
+  async function updatePreparationNote(noteId: number, noteForm: PreparationNoteForm) {
+    const response = await apiFetch(`${API_URL}/preparation-notes/${noteId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes }),
+      body: JSON.stringify(noteForm),
     });
-    const result = (await response.json()) as { notes: string; updated_at: string } | { error: string };
-    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not save preparation notes.");
-    setPracticeInterviews((current) => current.map((interview) => interview.id === practiceInterviewId
-      ? { ...interview, notes: result.notes, updated_at: result.updated_at }
-      : interview));
+    const result = (await response.json()) as PreparationNote | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not update the note.");
+    setPreparationNotes((current) => current.map((note) => note.id === noteId ? result : note));
+  }
+
+  async function deletePreparationNote(noteId: number) {
+    const response = await apiFetch(`${API_URL}/preparation-notes/${noteId}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Could not delete the note.");
+    setPreparationNotes((current) => current.filter((note) => note.id !== noteId));
   }
 
   async function addQuestionToPractice(questionId: number) {
@@ -798,6 +837,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
             interviews={practiceInterviews}
             isLoadingInterviews={isPracticeListLoading}
             isLoadingQuestions={arePracticeQuestionsLoading}
+            isLoadingNotes={arePreparationNotesLoading}
+            notes={preparationNotes}
+            notesError={preparationNotesError}
             questionsError={practiceQuestionsError}
             questions={practiceQuestions}
             onAddCustomQuestion={addCustomQuestionToPractice}
@@ -806,12 +848,15 @@ function App({ accountEmail, onSignOut }: AppProps) {
               setPage("questions");
             }}
             onCreateInterview={createPracticeInterview}
+            onCreateNote={createPreparationNote}
             onDeleteInterview={deletePracticeInterview}
+            onDeleteNote={deletePreparationNote}
+            onLoadNotes={() => loadPreparationNotes().catch(() => undefined)}
             onRemoveQuestion={removePracticeQuestion}
             onRetry={() => loadPracticeInterviews().catch(() => undefined)}
             onSaveAnswer={savePracticeAnswer}
-            onSaveNotes={savePracticeNotes}
             onSelectInterview={selectPracticeInterview}
+            onUpdateNote={updatePreparationNote}
           />
         )}
       </main>

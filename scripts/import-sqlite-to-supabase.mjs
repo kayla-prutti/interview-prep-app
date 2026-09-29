@@ -27,6 +27,8 @@ const interviewRows = database.prepare("select * from interviews order by id").a
 const questionRows = database.prepare("select * from questions order by id").all();
 const prepRows = database.prepare("select * from practice_interviews order by id").all();
 const prepQuestionRows = database.prepare("select * from practice_questions order by id").all();
+const hasPreparationNotes = database.prepare("select 1 from sqlite_master where type = 'table' and name = 'preparation_notes'").get();
+const preparationNoteRows = hasPreparationNotes ? database.prepare("select * from preparation_notes order by id").all() : [];
 const interviewIds = new Map();
 const questionIds = new Map();
 const prepIds = new Map();
@@ -44,7 +46,7 @@ for (const row of questionRows) {
 }
 
 for (const row of prepRows) {
-  const result = await admin.from("practice_interviews").insert({ user_id: user.id, company: row.company, role: row.role, notes: row.notes ?? "", interviewer_type: row.interviewer_type, created_at: row.created_at, updated_at: row.updated_at }).select("id").single();
+  const result = await admin.from("practice_interviews").insert({ user_id: user.id, company: row.company, role: row.role, interviewer_type: row.interviewer_type, created_at: row.created_at, updated_at: row.updated_at }).select("id").single();
   if (result.error) throw result.error;
   prepIds.set(row.id, result.data.id);
 }
@@ -54,4 +56,9 @@ for (const row of prepQuestionRows) {
   if (result.error) throw result.error;
 }
 
-console.log(`Imported ${interviewRows.length} interviews, ${questionRows.length} questions, ${prepRows.length} preparation interviews, and ${prepQuestionRows.length} preparation questions for ${email}.`);
+for (const row of preparationNoteRows) {
+  const result = await admin.from("preparation_notes").insert({ user_id: user.id, title: row.title, content: row.content, created_at: row.created_at, updated_at: row.updated_at });
+  if (result.error) throw result.error;
+}
+
+console.log(`Imported ${interviewRows.length} interviews, ${questionRows.length} questions, ${prepRows.length} preparation interviews, ${prepQuestionRows.length} preparation questions, and ${preparationNoteRows.length} preparation notes for ${email}.`);

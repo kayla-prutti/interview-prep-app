@@ -1,18 +1,19 @@
 import { API_URL } from "./config";
 import { supabaseFetch } from "./supabaseApi";
 import { usesSupabase } from "./supabase";
-import type { Interview, PracticeInterview, PracticeQuestion, Question } from "./types";
+import type { Interview, PracticeInterview, PracticeQuestion, PreparationNote, Question } from "./types";
 
 type BrowserStore = {
   interviews: Interview[];
   questions: Question[];
   practiceInterviews: PracticeInterview[];
   practiceQuestions: PracticeQuestion[];
+  preparationNotes: PreparationNote[];
 };
 
 const storageKey = "i-prep-browser-data-v1";
 const browserStorageEnabled = import.meta.env.VITE_STORAGE_MODE === "browser";
-const emptyStore: BrowserStore = { interviews: [], questions: [], practiceInterviews: [], practiceQuestions: [] };
+const emptyStore: BrowserStore = { interviews: [], questions: [], practiceInterviews: [], practiceQuestions: [], preparationNotes: [] };
 
 function readStore(): BrowserStore {
   const saved = localStorage.getItem(storageKey);
@@ -132,7 +133,6 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       id: nextId(store.practiceInterviews),
       company: String(input.company ?? "").trim(),
       role: String(input.role ?? "").trim(),
-      notes: String(input.notes ?? "").trim(),
       interviewer_type: input.interviewer_type as PracticeInterview["interviewer_type"],
       question_count: 0,
       answered_count: 0,
@@ -204,24 +204,52 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)$/);
-  if (match && method === "PUT") {
-    const id = Number(match[1]);
-    const index = store.practiceInterviews.findIndex((item) => item.id === id);
-    if (index < 0) return Promise.resolve(json({ error: "Prep interview not found." }, 404));
-    store.practiceInterviews[index] = {
-      ...store.practiceInterviews[index],
-      notes: String(bodyOf(init).notes ?? "").trim(),
-      updated_at: now,
-    };
-    writeStore(store);
-    return Promise.resolve(json(store.practiceInterviews[index]));
-  }
   if (match && method === "DELETE") {
     const id = Number(match[1]);
     store.practiceInterviews = store.practiceInterviews.filter((item) => item.id !== id);
     store.practiceQuestions = store.practiceQuestions.filter((question) => question.practice_interview_id !== id);
     writeStore(store);
     return Promise.resolve(new Response(null, { status: 204 }));
+  }
+
+  if (path === "/preparation-notes" && method === "GET") {
+    return Promise.resolve(json([...store.preparationNotes].sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id - a.id)));
+  }
+  if (path === "/preparation-notes" && method === "POST") {
+    const input = bodyOf(init);
+    const note: PreparationNote = {
+      id: nextId(store.preparationNotes),
+      title: String(input.title ?? "").trim(),
+      content: String(input.content ?? "").trim(),
+      created_at: now,
+      updated_at: now,
+    };
+    store.preparationNotes.push(note);
+    writeStore(store);
+    return Promise.resolve(json(note, 201));
+  }
+
+  match = path.match(/^\/preparation-notes\/(\d+)$/);
+  if (match) {
+    const id = Number(match[1]);
+    const index = store.preparationNotes.findIndex((note) => note.id === id);
+    if (index < 0) return Promise.resolve(json({ error: "Note not found." }, 404));
+    if (method === "PUT") {
+      const input = bodyOf(init);
+      store.preparationNotes[index] = {
+        ...store.preparationNotes[index],
+        title: String(input.title ?? "").trim(),
+        content: String(input.content ?? "").trim(),
+        updated_at: now,
+      };
+      writeStore(store);
+      return Promise.resolve(json(store.preparationNotes[index]));
+    }
+    if (method === "DELETE") {
+      store.preparationNotes.splice(index, 1);
+      writeStore(store);
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)\/questions$/);
