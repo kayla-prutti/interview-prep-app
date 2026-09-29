@@ -8,6 +8,7 @@ type AccountMenuProps = {
 export function AccountMenu({ email, onLogOut }: AccountMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [error, setError] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const initial = email.trim().charAt(0).toUpperCase() || "A";
 
@@ -32,11 +33,14 @@ export function AccountMenu({ email, onLogOut }: AccountMenuProps) {
 
   async function logOut() {
     setIsLoggingOut(true);
+    setError("");
     try {
       await onLogOut();
+      setIsOpen(false);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not log out. Please try again.");
     } finally {
       setIsLoggingOut(false);
-      setIsOpen(false);
     }
   }
 
@@ -69,6 +73,7 @@ export function AccountMenu({ email, onLogOut }: AccountMenuProps) {
           >
             {isLoggingOut ? "Logging out..." : "Log out"}
           </button>
+          {error && <p className="border-t border-red-100 bg-red-50 px-4 py-3 text-xs leading-5 text-red-700" role="alert">{error}</p>}
         </div>
       )}
     </div>

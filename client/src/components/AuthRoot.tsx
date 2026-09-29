@@ -20,10 +20,15 @@ export function AuthRoot({ children }: AuthRootProps) {
 
   useEffect(() => {
     if (!usesSupabase || !supabase) return;
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setIsLoading(false);
-    });
+    void supabase.auth.getSession()
+      .then(({ data, error: sessionError }) => {
+        if (sessionError) throw sessionError;
+        setSession(data.session);
+      })
+      .catch((caughtError: unknown) => {
+        setError(caughtError instanceof Error ? caughtError.message : "Could not open your account. Please try again.");
+      })
+      .finally(() => setIsLoading(false));
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setIsLoading(false);
@@ -49,13 +54,18 @@ export function AuthRoot({ children }: AuthRootProps) {
       return;
     }
     setIsSubmitting(true);
-    const confirmationUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
-    const result = isSignUp
-      ? await authClient.auth.signUp({ email, password, options: { emailRedirectTo: confirmationUrl } })
-      : await authClient.auth.signInWithPassword({ email, password });
-    if (result.error) setError(result.error.message);
-    else if (isSignUp && !result.data.session) setMessage("Check your email to confirm your account, then sign in.");
-    setIsSubmitting(false);
+    try {
+      const confirmationUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+      const result = isSignUp
+        ? await authClient.auth.signUp({ email, password, options: { emailRedirectTo: confirmationUrl } })
+        : await authClient.auth.signInWithPassword({ email, password });
+      if (result.error) setError(result.error.message);
+      else if (isSignUp && !result.data.session) setMessage("Check your email to confirm your account, then sign in.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not connect to your account. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (!session) {
@@ -87,6 +97,9 @@ export function AuthRoot({ children }: AuthRootProps) {
 
   return children({
     email: session.user.email ?? "Account",
-    signOut: async () => { await authClient.auth.signOut(); },
+    signOut: async () => {
+      const { error: signOutError } = await authClient.auth.signOut();
+      if (signOutError) throw signOutError;
+    },
   });
 }

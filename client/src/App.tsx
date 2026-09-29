@@ -79,8 +79,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [practiceSourceQuestionIds, setPracticeSourceQuestionIds] = useState<Set<number>>(() => new Set());
   const [isPracticePickerOpen, setIsPracticePickerOpen] = useState(false);
   const [arePracticeOptionsLoaded, setArePracticeOptionsLoaded] = useState(false);
+  const [isPracticeOptionsLoading, setIsPracticeOptionsLoading] = useState(false);
+  const [practiceOptionsError, setPracticeOptionsError] = useState("");
   const [pendingPracticeAdds, setPendingPracticeAdds] = useState<Set<string>>(() => new Set());
+  const [isPracticeListLoading, setIsPracticeListLoading] = useState(false);
   const [arePracticeQuestionsLoading, setArePracticeQuestionsLoading] = useState(false);
+  const [practiceError, setPracticeError] = useState("");
+  const [practiceQuestionsError, setPracticeQuestionsError] = useState("");
   const [areQuestionsLoading, setAreQuestionsLoading] = useState(true);
   const [questionsError, setQuestionsError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +103,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [isEditingDetail, setIsEditingDetail] = useState(false);
   const [editForm, setEditForm] = useState<InterviewEditForm | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingInterview, setIsDeletingInterview] = useState(false);
   const interviewRequest = useRef(0);
   const questionRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
@@ -182,6 +188,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const loadPracticeInterviews = useCallback(async (view: "options" | "summary" = "summary") => {
     const requestRef = view === "options" ? practiceOptionsRequest : practiceSummariesRequest;
     if (requestRef.current) return requestRef.current;
+    if (view === "summary") {
+      setIsPracticeListLoading(true);
+      setPracticeError("");
+    } else {
+      setIsPracticeOptionsLoading(true);
+      setPracticeOptionsError("");
+    }
     const request = (async () => {
       const parameters = view === "options" ? "?view=options" : "";
       const response = await apiFetch(`${API_URL}/practice-interviews${parameters}`);
@@ -194,12 +207,20 @@ function App({ accountEmail, onSignOut }: AppProps) {
     requestRef.current = request;
     try {
       await request;
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Could not load prep interviews.";
+      if (view === "summary") setPracticeError(message);
+      else setPracticeOptionsError(message);
+      throw caughtError;
     } finally {
       if (requestRef.current === request) requestRef.current = null;
+      if (view === "summary") setIsPracticeListLoading(false);
+      else setIsPracticeOptionsLoading(false);
     }
   }, []);
 
   const loadPracticeQuestions = useCallback(async (practiceInterviewId: number) => {
+    setPracticeQuestionsError("");
     const cached = practiceQuestionCache.current.get(practiceInterviewId);
     if (cached) {
       setPracticeQuestions(cached);
@@ -221,6 +242,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       practiceQuestionCache.current.set(practiceInterviewId, loadedQuestions);
       setPracticeQuestions(loadedQuestions);
       setPracticeSourceQuestionIds(new Set(loadedQuestions.map((question) => question.source_question_id).filter((id): id is number => id !== null)));
+    } catch (caughtError) {
+      setPracticeQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load practice questions.");
     } finally {
       practiceQuestionRequests.current.delete(practiceInterviewId);
       setArePracticeQuestionsLoading(false);
@@ -231,7 +254,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     if (page !== "practice" || practiceSummariesLoaded.current) return;
     // Preparation loads question and answer totals for its cards.
     // oxlint-disable-next-line react/set-state-in-effect
-    void loadPracticeInterviews();
+    void loadPracticeInterviews().catch(() => undefined);
   }, [loadPracticeInterviews, page]);
 
   useEffect(() => {
@@ -396,9 +419,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }
 
   async function deleteInterview() {
-    if (!selectedInterview) return;
+    if (!selectedInterview || isDeletingInterview) return;
 
     setDetailError("");
+    setIsDeletingInterview(true);
 
     try {
       const response = await apiFetch(`${API_URL}/interviews/${selectedInterview.id}`, {
@@ -415,6 +439,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (interviewPage === 0) void loadInterviews();
     } catch (caughtError) {
       setDetailError(caughtError instanceof Error ? caughtError.message : "Could not delete interview.");
+    } finally {
+      setIsDeletingInterview(false);
     }
   }
 
@@ -481,6 +507,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setActivePracticeId(practiceInterviewId);
     setPracticeQuestions([]);
     setPracticeSourceQuestionIds(new Set());
+    setPracticeQuestionsError("");
     if (practiceInterviewId) void loadPracticeQuestions(practiceInterviewId);
   }
 
@@ -500,8 +527,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
     if (practiceOptionsLoaded.current) return;
     try {
       await loadPracticeInterviews("options");
-    } catch (caughtError) {
-      setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not load prep interviews.");
+    } catch {
+      // The picker displays its own retryable error state.
     }
   }
 
@@ -648,7 +675,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             <PageHeader
               accountControl={accountControl}
               action={(
-              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setForm(emptyForm); setModalPosition({ x: 0, y: 0 }); setIsModalOpen(true); }}>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] shadow-sm hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setForm(emptyForm); setError(""); setModalPosition({ x: 0, y: 0 }); setIsModalOpen(true); }}>
                 + New interview
               </button>
               )}
@@ -673,7 +700,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </header>
 
               {isLoading && <p className="p-5 text-sm text-stone-500">Loading interviews...</p>}
-              {error && <p className="m-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{error}</p>}
+              {error && <div className="m-5 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{error}</span><button className="w-fit shrink-0 rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100 disabled:opacity-60" disabled={isLoading} type="button" onClick={() => void loadInterviews()}>{isLoading ? "Trying again..." : "Try again"}</button></div>}
               {!isLoading && !error && interviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
 
               {!isLoading && !error && interviews.length > 0 && (
@@ -708,8 +735,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
               {isPracticePickerOpen && (
                 <div className="absolute left-4 right-4 top-[calc(100%-2px)] z-40 max-h-72 overflow-y-auto rounded-lg border border-[#BDBDB8] bg-white p-1.5 shadow-xl sm:left-auto sm:w-[430px]">
                   <p className="px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#686868]">Choose a prep interview</p>
-                  {!arePracticeOptionsLoaded && <p className="px-3 py-3 text-sm text-[#686868]">Loading prep interviews...</p>}
-                  {arePracticeOptionsLoaded && practiceInterviews.length === 0 && <p className="px-3 py-3 text-sm text-[#686868]">No prep interviews yet. Create one in Preparation.</p>}
+                  {isPracticeOptionsLoading && <p className="px-3 py-3 text-sm text-[#686868]">Loading prep interviews...</p>}
+                  {practiceOptionsError && <div className="m-2 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert"><p>{practiceOptionsError}</p><button className="mt-2 font-bold underline underline-offset-2" type="button" onClick={() => void loadPracticeInterviews("options").catch(() => undefined)}>Try again</button></div>}
+                  {arePracticeOptionsLoaded && !isPracticeOptionsLoading && !practiceOptionsError && practiceInterviews.length === 0 && <p className="px-3 py-3 text-sm text-[#686868]">No prep interviews yet. Create one in Preparation.</p>}
                   {practiceInterviews.map((interview) => (
                     <button aria-pressed={interview.id === activePracticeId} className={`block w-full cursor-pointer rounded-md px-3 py-2.5 text-left hover:bg-[#FFF0E5] ${interview.id === activePracticeId ? "bg-[#FFF0E5]" : ""}`} key={interview.id} type="button" onClick={() => selectPracticeInterviewForLibrary(interview.id)}>
                       <span className="block text-sm font-bold text-[#202020]">{interview.company}</span>
@@ -726,7 +754,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             </div>
 
             {areQuestionsLoading && <p className="mt-6 border-y border-stone-300 py-5 text-sm text-stone-500">Opening the question library...</p>}
-            {questionsError && <p className="mt-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">{questionsError}</p>}
+            {questionsError && <div className="mt-6 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{questionsError}</span><button className="w-fit shrink-0 rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100 disabled:opacity-60" disabled={areQuestionsLoading} type="button" onClick={() => void loadQuestions()}>{areQuestionsLoading ? "Trying again..." : "Try again"}</button></div>}
 
             {!areQuestionsLoading && !questionsError && (
               <div className="mt-10 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
@@ -753,8 +781,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
         ) : (
           <PracticePage
             accountControl={accountControl}
+            error={practiceError}
             interviews={practiceInterviews}
+            isLoadingInterviews={isPracticeListLoading}
             isLoadingQuestions={arePracticeQuestionsLoading}
+            questionsError={practiceQuestionsError}
             questions={practiceQuestions}
             onAddCustomQuestion={addCustomQuestionToPractice}
             onBrowseQuestions={(interviewId) => {
@@ -764,6 +795,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onCreateInterview={createPracticeInterview}
             onDeleteInterview={deletePracticeInterview}
             onRemoveQuestion={removePracticeQuestion}
+            onRetry={() => loadPracticeInterviews().catch(() => undefined)}
             onSaveAnswer={savePracticeAnswer}
             onSelectInterview={selectPracticeInterview}
           />
@@ -782,6 +814,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
                 </div>
               </div>
             </header>
+
+            {error && <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
 
             <label className="mt-5 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
             <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} /></label>
@@ -829,7 +863,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             </fieldset>
 
             <footer className="mt-6 flex justify-end gap-3">
-              <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60" disabled={isSaving} type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canSaveInterview}>{isSaving ? "Saving..." : "Save interview"}</button>
             </footer>
           </form>
@@ -943,8 +977,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
             </p>
             {detailError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{detailError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" type="button" onClick={() => { setIsDeleteModalOpen(false); if (!editForm) setSelectedInterview(null); }}>Cancel</button>
-              <button className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700" type="button" onClick={() => void deleteInterview()}>Delete interview</button>
+              <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60" disabled={isDeletingInterview} type="button" onClick={() => { setIsDeleteModalOpen(false); if (!editForm) setSelectedInterview(null); }}>Cancel</button>
+              <button className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-wait disabled:opacity-60" disabled={isDeletingInterview} type="button" onClick={() => void deleteInterview()}>{isDeletingInterview ? "Deleting..." : "Delete interview"}</button>
             </div>
           </section>
         </div>

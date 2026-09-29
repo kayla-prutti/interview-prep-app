@@ -7,14 +7,18 @@ import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion } from 
 
 type PracticePageProps = {
   accountControl?: ReactNode;
+  error: string;
   interviews: PracticeInterview[];
+  isLoadingInterviews: boolean;
   isLoadingQuestions: boolean;
+  questionsError: string;
   questions: PracticeQuestion[];
   onAddCustomQuestion: (interviewId: number, questionText: string) => Promise<void>;
   onBrowseQuestions: (interviewId: number) => void;
   onCreateInterview: (form: PracticeInterviewForm) => Promise<void>;
   onDeleteInterview: (interviewId: number) => Promise<void>;
   onRemoveQuestion: (questionId: number) => Promise<void>;
+  onRetry: () => Promise<void>;
   onSaveAnswer: (questionId: number, answer: string) => Promise<void>;
   onSelectInterview: (interviewId: number | null) => void;
 };
@@ -25,7 +29,7 @@ const emptyPracticeForm: PracticeInterviewForm = {
   interviewer_type: "recruiter",
 };
 
-export function PracticePage({ accountControl, interviews, isLoadingQuestions, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onSaveAnswer, onSelectInterview }: PracticePageProps) {
+export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingQuestions, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onDeleteInterview, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview }: PracticePageProps) {
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<PracticeInterviewForm>(emptyPracticeForm);
@@ -37,6 +41,8 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
   const [answerDraft, setAnswerDraft] = useState("");
   const [customQuestionInterviewId, setCustomQuestionInterviewId] = useState<number | null>(null);
   const [customQuestionText, setCustomQuestionText] = useState("");
+  const [pageError, setPageError] = useState("");
+  const [removingQuestionIds, setRemovingQuestionIds] = useState<Set<number>>(new Set());
   const canCreateInterview = createForm.company.trim() !== ""
     && createForm.role.trim() !== ""
     && createForm.interviewer_type.trim() !== "";
@@ -106,6 +112,23 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
     }
   }
 
+  async function removeQuestion(questionId: number) {
+    if (removingQuestionIds.has(questionId)) return;
+    setPageError("");
+    setRemovingQuestionIds((current) => new Set(current).add(questionId));
+    try {
+      await onRemoveQuestion(questionId);
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Could not remove the question.");
+    } finally {
+      setRemovingQuestionIds((current) => {
+        const next = new Set(current);
+        next.delete(questionId);
+        return next;
+      });
+    }
+  }
+
   return (
     <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="practice">
       <PageHeader
@@ -116,7 +139,16 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
         title="Interview preparation"
       />
 
-      {interviews.length === 0 ? (
+      {(error || pageError) && (
+        <div className="mt-6 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
+          <span>{pageError || error}</span>
+          {error && <button className="w-fit shrink-0 cursor-pointer rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100 disabled:opacity-60" disabled={isLoadingInterviews} type="button" onClick={() => void onRetry()}>{isLoadingInterviews ? "Trying again..." : "Try again"}</button>}
+        </div>
+      )}
+
+      {isLoadingInterviews && interviews.length === 0 ? (
+        <div className="mt-8 rounded-xl border border-[#D6D6D2] bg-white px-6 py-12 text-center text-sm font-semibold text-[#686868]">Loading prep interviews...</div>
+      ) : !error && interviews.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-[#BDBDB8] bg-white px-6 py-12 text-center">
           <h2 className="text-2xl font-bold text-[#202020]">Create your first prep interview</h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#686868]">Start with the company, role, and interview type. You can add questions from the library after it is created.</p>
@@ -159,7 +191,12 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
 
                   {isOpen && (
                     <div className="border-t border-[#D6D6D2]">
-                      {isLoadingQuestions ? (
+                      {questionsError ? (
+                        <div className="flex flex-col gap-3 bg-red-50 px-6 py-5 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
+                          <span>{questionsError}</span>
+                          <button className="w-fit shrink-0 rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100" type="button" onClick={() => onSelectInterview(interview.id)}>Try again</button>
+                        </div>
+                      ) : isLoadingQuestions ? (
                         <p className="px-6 py-8 text-sm text-[#686868]">Loading practice questions...</p>
                       ) : questions.length === 0 ? (
                         <div className="px-6 py-10 text-center">
@@ -202,7 +239,7 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
                                       )}
                                     </div>
                                     <div className="flex shrink-0 gap-1">
-                                      <button aria-label="Remove from this prep interview" className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Remove from this prep interview" type="button" onClick={() => void onRemoveQuestion(question.id)}><BinIcon /></button>
+                                      <button aria-label={removingQuestionIds.has(question.id) ? "Removing question" : "Remove from this prep interview"} className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40" disabled={removingQuestionIds.has(question.id)} title="Remove from this prep interview" type="button" onClick={() => void removeQuestion(question.id)}><BinIcon /></button>
                                     </div>
                                   </div>
                                 </li>
