@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { BinIcon, PenIcon } from "../../components/Icons";
 import { PageHeader } from "../../components/PageHeader";
+import { RequiredLabel } from "../../components/RequiredLabel";
 import { interviewerLabel } from "../../lib/interviews";
 import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion } from "../../types";
 
@@ -199,9 +200,9 @@ export function PracticePage({ accountControl, interviews, isLoadingQuestions, q
               <h2 className="mt-1 text-2xl font-bold text-[#202020]">New prep interview</h2>
             </header>
             {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{modalError}</p>}
-            <label className="mt-5 grid gap-1.5 text-sm font-bold text-[#303030]">Company<input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.company} onChange={(event) => setCreateForm({ ...createForm, company: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]">Role<input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.role} onChange={(event) => setCreateForm({ ...createForm, role: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]">Interview type<select className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.interviewer_type} onChange={(event) => setCreateForm({ ...createForm, interviewer_type: event.target.value as PracticeInterviewForm["interviewer_type"] })}><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="technical">Technical</option></select></label>
+            <label className="mt-5 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Company</RequiredLabel><input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.company} onChange={(event) => setCreateForm({ ...createForm, company: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Role</RequiredLabel><input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.role} onChange={(event) => setCreateForm({ ...createForm, role: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Interview type</RequiredLabel><select required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none" value={createForm.interviewer_type} onChange={(event) => setCreateForm({ ...createForm, interviewer_type: event.target.value as PracticeInterviewForm["interviewer_type"] })}><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="technical">Technical</option></select></label>
             <footer className="mt-6 flex justify-end gap-3">
               <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canCreateInterview} type="submit">{isSaving ? "Creating..." : "Create prep interview"}</button>

@@ -12,6 +12,7 @@ import { DataTable } from "./components/DataTable";
 import { FolderTabs, type FolderTab } from "./components/FolderTabs";
 import { BinIcon, PenIcon } from "./components/Icons";
 import { PageHeader } from "./components/PageHeader";
+import { RequiredLabel } from "./components/RequiredLabel";
 import { SearchField } from "./components/SearchField";
 import { Sidebar } from "./components/Sidebar";
 import { WelcomeModal } from "./components/WelcomeModal";
@@ -169,7 +170,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const questionRows = form.questions ?? [""];
   const canSaveInterview = form.company.trim() !== ""
     && form.role.trim() !== ""
-    && form.notes.trim() !== ""
     && form.interviewer_type.trim() !== ""
     && form.interview_date.trim() !== ""
     && questionRows.some((question) => question.trim() !== "");
@@ -599,21 +599,20 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </div>
             </header>
 
-            <label className="mt-5 grid gap-1.5 text-sm font-medium text-slate-700">Company<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Role<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interviewer type<select className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.interviewer_type} onChange={(event) => setForm({ ...form, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interview date<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={form.interview_date} onChange={(event) => setForm({ ...form, interview_date: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Notes<textarea required className="min-h-24 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+            <label className="mt-5 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.interviewer_type} onChange={(event) => setForm({ ...form, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={form.interview_date} onChange={(event) => setForm({ ...form, interview_date: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-24 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
 
             <fieldset className="mt-5 border-t border-slate-200 pt-5">
-              <legend className="text-sm font-semibold text-slate-900">Questions asked</legend>
+              <legend className="text-sm font-semibold text-slate-900"><RequiredLabel>Questions asked</RequiredLabel></legend>
               <p className="mt-1 text-sm text-slate-600">Write each question as closely as you remember it.</p>
 
               <div className="mt-3 grid gap-2.5">
                 {questionRows.map((question, index) => (
                   <div className="flex gap-2" key={index}>
                     <input
-                      required={index === 0}
                       className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                       placeholder={`Question ${index + 1}`}
                       value={question}
@@ -702,11 +701,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </div>
             ) : (
               <form className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1" onSubmit={saveInterviewDetail}>
-                <label className="grid gap-1.5 text-sm font-medium text-slate-700">Company<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.company} onChange={(event) => setEditForm({ ...editForm, company: event.target.value })} /></label>
-                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Role<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.role} onChange={(event) => setEditForm({ ...editForm, role: event.target.value })} /></label>
-                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interviewer type<select className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.interviewer_type} onChange={(event) => setEditForm({ ...editForm, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
-                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Interview date<input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={editForm.interview_date} onChange={(event) => setEditForm({ ...editForm, interview_date: event.target.value })} /></label>
-                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700">Notes<textarea required className="min-h-28 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} /></label>
+                <label className="grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.company} onChange={(event) => setEditForm({ ...editForm, company: event.target.value })} /></label>
+                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.role} onChange={(event) => setEditForm({ ...editForm, role: event.target.value })} /></label>
+                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.interviewer_type} onChange={(event) => setEditForm({ ...editForm, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
+                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={editForm.interview_date} onChange={(event) => setEditForm({ ...editForm, interview_date: event.target.value })} /></label>
+                <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-28 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} /></label>
                 <fieldset className="mt-5 border-t border-[#D6D6D2] pt-5">
                   <legend className="text-sm font-semibold text-[#202020]">Questions asked</legend>
                   <p className="mt-1 text-sm text-[#686868]">Edit, remove, or add questions from this interview.</p>
