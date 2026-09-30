@@ -16,10 +16,10 @@ export function PreparationNoteViewModal({ note, onClose, onEdit }: PreparationN
         <span aria-hidden="true" className="absolute left-1/2 top-0 z-10 h-6 w-24 -translate-x-1/2 -rotate-1 bg-white/35 shadow-[0_1px_2px_rgba(32,32,32,0.08)]" />
         <span aria-hidden="true" className={`absolute right-0 top-0 z-10 h-8 w-8 [clip-path:polygon(0_0,100%_0,100%_100%)] ${style.fold}`} />
         <header className="relative shrink-0 border-b border-black/10 px-7 pb-4 pt-9 sm:px-9">
-          <h2 className="font-handwriting pr-8 text-4xl font-bold leading-tight text-[#202020]">{note.title}</h2>
+          <h2 className="pr-8 text-2xl font-bold leading-tight text-[#202020] sm:text-3xl">{note.title}</h2>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6 sm:px-9">
-          <p className="font-handwriting whitespace-pre-wrap text-[1.65rem] leading-[1.25] text-[#303030]">{note.content}</p>
+          <p className="whitespace-pre-wrap text-base leading-7 text-[#303030]">{note.content}</p>
         </div>
         <footer className="flex shrink-0 flex-col gap-3 border-t border-black/10 bg-white/20 px-7 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-9">
           <p className="text-xs text-[#686868]">Updated {new Date(note.updated_at).toLocaleDateString()}</p>
