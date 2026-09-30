@@ -10,8 +10,9 @@ import { apiFetch } from "./api";
 import { AccountMenu } from "./components/AccountMenu";
 import { DataTable } from "./components/DataTable";
 import { FolderTabs, type FolderTab } from "./components/FolderTabs";
-import { BinIcon, PenIcon, PracticeIcon } from "./components/Icons";
+import { BinIcon, PenIcon } from "./components/Icons";
 import { PageHeader } from "./components/PageHeader";
+import { PracticeDestinationMenu } from "./components/PracticeDestinationMenu";
 import { RequiredLabel } from "./components/RequiredLabel";
 import { SearchField } from "./components/SearchField";
 import { Sidebar } from "./components/Sidebar";
@@ -125,6 +126,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const practiceQuestionRequests = useRef(new Map<number, Promise<PracticeQuestion[]>>());
   const pendingPracticeAddsRef = useRef(new Set<string>());
   const preparationNotesLoaded = useRef(false);
+  const practicePickerRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
 
@@ -556,6 +558,17 @@ function App({ accountEmail, onSignOut }: AppProps) {
     }
   }
 
+  async function openPracticePicker() {
+    if (!isPracticePickerOpen) setIsPracticePickerOpen(true);
+    requestAnimationFrame(() => practicePickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    if (practiceOptionsLoaded.current) return;
+    try {
+      await loadPracticeInterviews("options");
+    } catch {
+      // The picker displays its own retryable error state.
+    }
+  }
+
   async function createPracticeInterview(practiceForm: PracticeInterviewForm) {
     const response = await apiFetch(`${API_URL}/practice-interviews`, {
       method: "POST",
@@ -692,7 +705,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     isAddedToPractice: (questionId) => practiceSourceQuestionIds.has(questionId),
     isAddingToPractice: (questionId) => activePracticeId !== null && pendingPracticeAdds.has(`${activePracticeId}:${questionId}`),
     onAddToPractice: (questionId) => void addQuestionToPractice(questionId).catch((caughtError) => setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not add the question.")),
-    onChoosePractice: () => void togglePracticePicker(),
+    onChoosePractice: () => void openPracticePicker(),
   };
 
   const activePracticeInterview = practiceInterviews.find((interview) => interview.id === activePracticeId);
@@ -749,43 +762,21 @@ function App({ accountEmail, onSignOut }: AppProps) {
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="questions">
             <PageHeader accountControl={accountControl} description="Browse every saved question by the kind of conversation where it appeared." eyebrow="Reference collection" title="Question library" />
 
-            <SearchField ariaLabel="Search the question library" className="mt-7 md:mt-5" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={(value) => { setQuestionSearch(value); setQuestionPage(0); }} onClear={() => { setQuestionSearch(""); setQuestionPage(0); }} />
-
-            <div className={`relative mt-4 max-w-3xl rounded-xl border bg-white shadow-sm ${activePracticeInterview ? "border-[#F5822A]" : "border-[#D6D6D2]"}`}>
-              <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${activePracticeInterview ? "bg-[#F5822A] text-[#202020]" : "bg-[#E4E4E1] text-[#686868]"}`}><PracticeIcon /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#9A3D00]">Practice destination</p>
-                  <h2 className="mt-1 truncate text-base font-bold text-[#202020]">{activePracticeInterview ? activePracticeInterview.company : "Choose a prep interview"}</h2>
-                  <p className="mt-0.5 text-sm text-[#686868]">
-                    {activePracticeInterview
-                      ? `${activePracticeInterview.role} · ${interviewerLabel(activePracticeInterview.interviewer_type)}`
-                      : "Select where questions from this library should be saved."}
-                  </p>
-                </div>
-                <button aria-expanded={isPracticePickerOpen} className={`shrink-0 cursor-pointer rounded-md px-4 py-2.5 text-sm font-bold outline-none ${activePracticeInterview ? "border border-[#F5822A] text-[#9A3D00] hover:bg-[#FFE4D1]" : "bg-[#F5822A] text-[#202020] hover:bg-[#C95712] hover:text-white"}`} type="button" onClick={() => void togglePracticePicker()}>
-                  {activePracticeInterview ? "Change prep" : "Choose prep"}
-                </button>
-              </div>
-
-              {isPracticePickerOpen && (
-                <div className="absolute left-4 right-4 top-[calc(100%-2px)] z-40 max-h-72 overflow-y-auto rounded-lg border border-[#BDBDB8] bg-white p-1.5 shadow-xl sm:left-auto sm:w-[430px]">
-                  <p className="px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#686868]">Choose a prep interview</p>
-                  {isPracticeOptionsLoading && <p className="px-3 py-3 text-sm text-[#686868]">Loading prep interviews...</p>}
-                  {practiceOptionsError && <div className="m-2 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert"><p>{practiceOptionsError}</p><button className="mt-2 font-bold underline underline-offset-2" type="button" onClick={() => void loadPracticeInterviews("options").catch(() => undefined)}>Try again</button></div>}
-                  {arePracticeOptionsLoaded && !isPracticeOptionsLoading && !practiceOptionsError && practiceInterviews.length === 0 && <p className="px-3 py-3 text-sm text-[#686868]">No prep interviews yet. Create one in Preparation.</p>}
-                  {practiceInterviews.map((interview) => (
-                    <button aria-pressed={interview.id === activePracticeId} className={`block w-full cursor-pointer rounded-md px-3 py-2.5 text-left hover:bg-[#FFF0E5] ${interview.id === activePracticeId ? "bg-[#FFF0E5]" : ""}`} key={interview.id} type="button" onClick={() => selectPracticeInterviewForLibrary(interview.id)}>
-                      <span className="block text-sm font-bold text-[#202020]">{interview.company}</span>
-                      <span className="mt-0.5 block text-xs text-[#686868]">{interview.role} · {interviewerLabel(interview.interviewer_type)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 border-t border-[#E4E4E1] px-4 py-3 text-xs text-[#686868] sm:flex-row sm:items-center sm:justify-between">
-                <p>{activePracticeInterview ? `Question actions now show “Add to ${activePracticeInterview.company}”.` : "Choose a prep before using the question actions below."}</p>
-                <button className="w-fit cursor-pointer font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => { setIsPracticePickerOpen(false); setPage("practice"); }}>Manage prep interviews</button>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center md:mt-5">
+              <SearchField ariaLabel="Search the question library" className="sm:flex-1" placeholder="Search questions, companies, or roles" value={questionSearch} onChange={(value) => { setQuestionSearch(value); setQuestionPage(0); }} onClear={() => { setQuestionSearch(""); setQuestionPage(0); }} />
+              <div className="w-full sm:w-[22rem]" ref={practicePickerRef}>
+                <PracticeDestinationMenu
+                  activeInterview={activePracticeInterview}
+                  areOptionsLoaded={arePracticeOptionsLoaded}
+                  error={practiceOptionsError}
+                  interviews={practiceInterviews}
+                  isLoading={isPracticeOptionsLoading}
+                  isOpen={isPracticePickerOpen}
+                  onManage={() => { setIsPracticePickerOpen(false); setPage("practice"); }}
+                  onRetry={() => void loadPracticeInterviews("options").catch(() => undefined)}
+                  onSelect={selectPracticeInterviewForLibrary}
+                  onToggle={() => void togglePracticePicker()}
+                />
               </div>
             </div>
 
@@ -793,7 +784,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             {questionsError && <div className="mt-6 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{questionsError}</span><button className="w-fit shrink-0 rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100 disabled:opacity-60" disabled={areQuestionsLoading} type="button" onClick={() => void loadQuestions()}>{areQuestionsLoading ? "Trying again..." : "Try again"}</button></div>}
 
             {!areQuestionsLoading && !questionsError && (
-              <div className="mt-10 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
+              <div className="mt-7 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
                 <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" panelId="question-folder-panel" tabs={interviewTypeTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
 
                 <section className="relative z-20 flex min-h-[420px] flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)] md:min-h-0 md:flex-1" id="question-folder-panel" role="tabpanel">
