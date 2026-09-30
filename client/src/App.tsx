@@ -27,10 +27,9 @@ import { createPageCacheKey, PageCache } from "./lib/PageCache";
 import {
   emptyInterviewForm as emptyForm,
   formatDate,
-  interviewSections,
+  interviewFilterSections,
   interviewerBadgeClass,
   interviewerLabel,
-  questionLibrarySections,
 } from "./lib/interviews";
 import type {
   Interview,
@@ -58,6 +57,11 @@ type EditableInterviewQuestion = {
 };
 
 type PagedResult<Item> = { items: Item[]; total: number };
+
+const interviewTypeTabs: FolderTab<InterviewFilter>[] = interviewFilterSections.map((section) => ({
+  value: section.type,
+  label: section.title,
+}));
 
 function App({ accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
@@ -294,9 +298,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
     void loadQuestions();
   }, [loadQuestions, page]);
 
-  const activeInterviewSection = interviewSections.find((section) => section.type === activeInterviewType) ?? interviewSections[0];
-
-  const activeQuestionSection = questionLibrarySections.find((section) => section.type === activeQuestionType) ?? questionLibrarySections[0];
   const questionRows = form.questions ?? [""];
   const canSaveInterview = form.company.trim() !== ""
     && form.role.trim() !== ""
@@ -694,16 +695,6 @@ function App({ accountEmail, onSignOut }: AppProps) {
     onChoosePractice: () => void togglePracticePicker(),
   };
 
-  const interviewTabs: FolderTab<InterviewFilter>[] = interviewSections.map((section) => ({
-    value: section.type,
-    label: section.title,
-  }));
-
-  const questionTabs: FolderTab<InterviewFilter>[] = questionLibrarySections.map((section) => ({
-    value: section.type,
-    label: section.title,
-  }));
-
   const activePracticeInterview = practiceInterviews.find((interview) => interview.id === activePracticeId);
 
   const accountControl = accountEmail && onSignOut
@@ -740,17 +731,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
             <SearchField ariaLabel="Search by company name" className="mt-7 md:mt-5" placeholder="Search by company name" value={search} onChange={(value) => { setSearch(value); setInterviewPage(0); }} onClear={() => { setSearch(""); setInterviewPage(0); }} />
 
             <div className="mt-7 md:mt-5">
-              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" panelId="interview-folder-panel" tabs={interviewTabs} onChange={(value) => { setActiveInterviewType(value); setInterviewPage(0); }} />
+              <FolderTabs activeValue={activeInterviewType} ariaLabel="Interview folders" panelId="interview-folder-panel" tabs={interviewTypeTabs} onChange={(value) => { setActiveInterviewType(value); setInterviewPage(0); }} />
             </div>
 
             <section className="relative z-20 flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)]" id="interview-folder-panel" role="tabpanel">
-              <header className="flex shrink-0 items-center justify-between border-b border-[#D6D6D2] px-5 py-3.5">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#C95712]">Interview folder</p>
-                  <h2 className="mt-0.5 text-lg font-bold text-[#202020]">{activeInterviewSection.title} interviews</h2>
-                </div>
-              </header>
-
               {isLoading && <p className="p-5 text-sm text-stone-500">Loading interviews...</p>}
               {error && <div className="m-5 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{error}</span><button className="w-fit shrink-0 rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100 disabled:opacity-60" disabled={isLoading} type="button" onClick={() => void loadInterviews()}>{isLoading ? "Trying again..." : "Try again"}</button></div>}
               {!isLoading && !error && interviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
@@ -810,17 +794,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
 
             {!areQuestionsLoading && !questionsError && (
               <div className="mt-10 min-w-0 md:mt-5 md:flex md:min-h-0 md:flex-1 md:flex-col">
-                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" panelId="question-folder-panel" tabs={questionTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
+                <FolderTabs activeValue={activeQuestionType} ariaLabel="Interview type folders" panelId="question-folder-panel" tabs={interviewTypeTabs} onChange={(value) => { setActiveQuestionType(value); setQuestionPage(0); }} />
 
                 <section className="relative z-20 flex min-h-[420px] flex-col overflow-hidden rounded-b-xl rounded-tr-xl border border-[#BDBDB8] bg-white shadow-[0_14px_34px_rgba(32,32,32,0.08)] md:min-h-0 md:flex-1" id="question-folder-panel" role="tabpanel">
-                  <header className="flex shrink-0 flex-col gap-3 border-b border-[#D6D6D2] px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Interview type folder</p>
-                      <h2 className="mt-1 text-3xl font-bold text-[#202020]">{activeQuestionSection.title}</h2>
-                      <p className="mt-2 text-sm text-[#686868]">{activeQuestionSection.description}</p>
-                    </div>
-                  </header>
-
                   {questions.length === 0 ? (
                     <p className="px-6 py-8 text-sm text-[#686868]">No matching questions in this folder.</p>
                   ) : (

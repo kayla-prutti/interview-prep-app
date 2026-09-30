@@ -9,20 +9,11 @@ export const emptyInterviewForm: InterviewForm = {
   questions: [""],
 };
 
-export const questionSections: { type: InterviewerType; title: string; description: string }[] = [
-  { type: "recruiter", title: "Recruiter", description: "Motivation, background, availability, and role alignment." },
-  { type: "hiring_manager", title: "Hiring manager", description: "Experience, judgment, collaboration, and impact." },
-  { type: "technical", title: "Technical", description: "Skills, systems, problem solving, and technical depth." },
-];
-
-export const questionLibrarySections: { type: InterviewFilter; title: string; description: string }[] = [
-  { type: "all", title: "All", description: "Every saved question across all interview types." },
-  ...questionSections,
-];
-
-export const interviewSections: { type: InterviewFilter; title: string }[] = [
+export const interviewFilterSections: { type: InterviewFilter; title: string }[] = [
   { type: "all", title: "All" },
-  ...questionSections.map(({ type, title }) => ({ type, title })),
+  { type: "recruiter", title: "Recruiter" },
+  { type: "hiring_manager", title: "Hiring manager" },
+  { type: "technical", title: "Technical" },
 ];
 
 export function formatDate(value: string) {
