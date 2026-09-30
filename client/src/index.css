@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "@fontsource-variable/rethink-sans";
 
+@font-face {
+  font-family: "Caveat Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2") format("woff2-variations");
+}
+
 html {
   height: 100%;
   scroll-behavior: smooth;
@@ -17,6 +25,10 @@ body {
 #root {
   height: 100%;
   width: 100%;
+}
+
+.font-handwriting {
+  font-family: "Caveat Variable", "Comic Sans MS", cursive;
 }
 
 button:enabled {
