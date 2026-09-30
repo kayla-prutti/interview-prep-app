@@ -7,6 +7,7 @@ import { interviewerLabel } from "../../lib/interviews";
 import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteForm } from "../../types";
 import { NoteColorPicker } from "./NoteColorPicker";
 import { PreparationNoteCard } from "./PreparationNoteCard";
+import { PreparationNoteViewModal } from "./PreparationNoteViewModal";
 
 type PreparationSection = "interviews" | "notes";
 
@@ -64,6 +65,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
   const [removingQuestionIds, setRemovingQuestionIds] = useState<Set<number>>(new Set());
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<PreparationNote | null>(null);
+  const [viewedNote, setViewedNote] = useState<PreparationNote | null>(null);
   const [noteForm, setNoteForm] = useState<PreparationNoteForm>(emptyNoteForm);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteModalError, setNoteModalError] = useState("");
@@ -363,6 +365,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                   note={note}
                   onDelete={(selected) => { setNoteModalError(""); setNoteToDelete(selected); }}
                   onEdit={openNoteModal}
+                  onView={setViewedNote}
                 />
               ))}
             </div>
@@ -439,6 +442,14 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             </footer>
           </form>
         </div>
+      )}
+
+      {viewedNote && (
+        <PreparationNoteViewModal
+          note={viewedNote}
+          onClose={() => setViewedNote(null)}
+          onEdit={(note) => { setViewedNote(null); openNoteModal(note); }}
+        />
       )}
 
       {noteToDelete && (
