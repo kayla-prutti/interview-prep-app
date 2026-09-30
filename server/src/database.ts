@@ -174,7 +174,16 @@ if (!preparationNoteColumns.some((column) => column.name === "color")) {
   db.exec(`
     ALTER TABLE preparation_notes
     ADD COLUMN color TEXT NOT NULL DEFAULT 'yellow'
-    CHECK (color IN ('yellow', 'pink', 'blue', 'green', 'orange'))
+    CHECK (color IN ('yellow', 'pink', 'blue', 'green', 'orange'));
+
+    UPDATE preparation_notes
+    SET color = CASE id % 5
+      WHEN 0 THEN 'yellow'
+      WHEN 1 THEN 'pink'
+      WHEN 2 THEN 'blue'
+      WHEN 3 THEN 'green'
+      ELSE 'orange'
+    END
   `);
 }
 
