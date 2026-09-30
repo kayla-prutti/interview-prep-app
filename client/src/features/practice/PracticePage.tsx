@@ -4,7 +4,9 @@ import { BinIcon, PenIcon } from "../../components/Icons";
 import { PageHeader } from "../../components/PageHeader";
 import { RequiredLabel } from "../../components/RequiredLabel";
 import { interviewerLabel } from "../../lib/interviews";
-import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteColor, PreparationNoteForm } from "../../types";
+import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteForm } from "../../types";
+import { NoteColorPicker } from "./NoteColorPicker";
+import { PreparationNoteCard } from "./PreparationNoteCard";
 
 type PreparationSection = "interviews" | "notes";
 
@@ -40,25 +42,6 @@ const emptyPracticeForm: PracticeInterviewForm = {
 };
 
 const emptyNoteForm: PreparationNoteForm = { title: "", content: "", color: "yellow" };
-const noteColors: { value: PreparationNoteColor; label: string; swatch: string; card: string; fold: string }[] = [
-  { value: "yellow", label: "Yellow", swatch: "bg-[#F7DE72]", card: "border-[#D8BD47] bg-[#FFF2A8]", fold: "bg-[#E4C855]" },
-  { value: "pink", label: "Pink", swatch: "bg-[#F4A7B9]", card: "border-[#D88B9E] bg-[#FFD5DF]", fold: "bg-[#E89AAD]" },
-  { value: "blue", label: "Blue", swatch: "bg-[#91C9EA]", card: "border-[#70ADD1] bg-[#CDEBFB]", fold: "bg-[#7CB9DB]" },
-  { value: "green", label: "Green", swatch: "bg-[#A8D49E]", card: "border-[#83B879] bg-[#D6F0CF]", fold: "bg-[#91C487]" },
-  { value: "orange", label: "Orange", swatch: "bg-[#F5AE68]", card: "border-[#D98C45] bg-[#FFD9AE]", fold: "bg-[#E69A51]" },
-];
-
-function noteColor(value: PreparationNoteColor | undefined) {
-  return noteColors.find((option) => option.value === value) ?? noteColors[0];
-}
-
-const notePositions = [
-  "-rotate-[1.1deg] md:translate-y-1",
-  "rotate-[0.8deg] md:translate-y-4",
-  "-rotate-[0.45deg]",
-  "rotate-[1deg] md:translate-y-2",
-  "-rotate-[0.75deg] md:translate-y-5",
-];
 const preparationTabs: FolderTab<PreparationSection>[] = [
   { value: "interviews", label: "Interview prep" },
   { value: "notes", label: "Notes" },
@@ -373,23 +356,15 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
           )}
           {!isLoadingNotes && !notesError && notes.length > 0 && (
             <div className="grid min-h-0 flex-1 auto-rows-max gap-x-5 gap-y-7 overflow-y-auto bg-[#F4F4F2] p-6 pb-10 md:grid-cols-2 xl:grid-cols-3">
-              {notes.map((note, index) => {
-                const color = noteColor(note.color);
-                return (
-                <article className={`group relative flex h-72 flex-col overflow-hidden rounded-sm border px-6 pb-5 pt-7 shadow-[0_9px_18px_rgba(32,32,32,0.16)] transition duration-200 hover:z-10 hover:-translate-y-1 hover:rotate-0 hover:shadow-[0_15px_28px_rgba(32,32,32,0.2)] ${color.card} ${notePositions[index % notePositions.length]}`} key={note.id}>
-                  <span aria-hidden="true" className="absolute left-1/2 top-0 h-5 w-20 -translate-x-1/2 -rotate-1 bg-white/35 shadow-[0_1px_2px_rgba(32,32,32,0.08)]" />
-                  <span aria-hidden="true" className={`absolute right-0 top-0 h-6 w-6 [clip-path:polygon(0_0,100%_0,100%_100%)] ${color.fold}`} />
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-handwriting line-clamp-2 pr-1 text-[1.8rem] font-bold leading-[1.05] text-[#202020]">{note.title}</h3>
-                    <div className="flex shrink-0 gap-1 transition-opacity md:opacity-55 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                      <button aria-label={`Edit ${note.title}`} className="grid h-9 w-9 cursor-pointer place-items-center rounded-md text-[#4A4A4A] hover:bg-white/55 hover:text-[#9A3D00]" title="Edit note" type="button" onClick={() => openNoteModal(note)}><PenIcon /></button>
-                      <button aria-label={`Delete ${note.title}`} className="grid h-9 w-9 cursor-pointer place-items-center rounded-md text-[#4A4A4A] hover:bg-white/55 hover:text-red-700" title="Delete note" type="button" onClick={() => { setNoteModalError(""); setNoteToDelete(note); }}><BinIcon /></button>
-                    </div>
-                  </div>
-                  <p className="font-handwriting mt-4 line-clamp-6 min-h-0 flex-1 whitespace-pre-wrap text-[1.45rem] leading-[1.15] text-[#353535]">{note.content}</p>
-                  <p className="mt-5 border-t border-black/10 pt-3 text-xs text-[#686868]">Updated {new Date(note.updated_at).toLocaleDateString()}</p>
-                </article>
-              );})}
+              {notes.map((note, index) => (
+                <PreparationNoteCard
+                  index={index}
+                  key={note.id}
+                  note={note}
+                  onDelete={(selected) => { setNoteModalError(""); setNoteToDelete(selected); }}
+                  onEdit={openNoteModal}
+                />
+              ))}
             </div>
           )}
         </section>
@@ -455,20 +430,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
               <h2 className="mt-1 text-2xl font-bold text-[#202020]">{selectedNote ? "Edit note" : "New note"}</h2>
             </header>
             {noteModalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{noteModalError}</p>}
-            <fieldset className="mt-5">
-              <legend className="text-sm font-bold text-[#303030]">Note color</legend>
-              <div className="mt-2 flex flex-wrap gap-3">
-                {noteColors.map((color) => (
-                  <label className="cursor-pointer" key={color.value} title={color.label}>
-                    <input className="peer sr-only" name="note-color" type="radio" value={color.value} checked={noteForm.color === color.value} onChange={() => setNoteForm({ ...noteForm, color: color.value })} />
-                    <span className={`grid h-10 w-10 place-items-center rounded-full border-2 border-white shadow-sm ring-1 ring-[#BDBDB8] transition hover:scale-110 peer-checked:ring-2 peer-checked:ring-[#202020] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#F5822A] ${color.swatch}`}>
-                      <span className="sr-only">{color.label}</span>
-                      {noteForm.color === color.value && <span aria-hidden="true" className="text-lg font-bold text-[#202020]">✓</span>}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            <NoteColorPicker value={noteForm.color} onChange={(color) => setNoteForm({ ...noteForm, color })} />
             <label className="mt-5 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Title</RequiredLabel><input autoFocus required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" placeholder="Example: Questions to ask the hiring manager" value={noteForm.title} onChange={(event) => setNoteForm({ ...noteForm, title: event.target.value })} /></label>
             <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Note</RequiredLabel><textarea required className="min-h-52 resize-y rounded-md border border-[#D6D6D2] px-4 py-3 font-normal leading-6 outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" placeholder="Write the details you want to keep for preparation..." value={noteForm.content} onChange={(event) => setNoteForm({ ...noteForm, content: event.target.value })} /></label>
             <footer className="mt-6 flex justify-end gap-3">
