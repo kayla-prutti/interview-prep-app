@@ -1,5 +1,15 @@
 import { supabase } from "./supabase";
-import type { InterviewFilter, InterviewerType, Question } from "./types";
+import type { InterviewFilter, InterviewerType, PreparationNoteColor, Question } from "./types";
+
+const preparationNoteColors: PreparationNoteColor[] = ["yellow", "pink", "blue", "green", "orange"];
+
+function preparationNoteColor(noteId: number): PreparationNoteColor {
+  return preparationNoteColors[Math.abs(noteId) % preparationNoteColors.length];
+}
+
+function isMissingPreparationNoteColor(error: { code?: string; message?: string } | null) {
+  return Boolean(error && (error.code === "42703" || error.code === "PGRST204" || error.message?.includes("color")));
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -196,13 +206,21 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   }
 
   if (routePath === "/preparation-notes" && method === "GET") {
-    const { data, error } = await supabase.from("preparation_notes").select("id, title, content, color, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false });
-    return error ? failure(error.message, errorStatus(error.code)) : json(data ?? []);
+    const result = await supabase.from("preparation_notes").select("id, title, content, color, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false });
+    if (!result.error) return json(result.data ?? []);
+    if (!isMissingPreparationNoteColor(result.error)) return failure(result.error.message, errorStatus(result.error.code));
+    const fallback = await supabase.from("preparation_notes").select("id, title, content, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false });
+    return fallback.error
+      ? failure(fallback.error.message, errorStatus(fallback.error.code))
+      : json((fallback.data ?? []).map((note) => ({ ...note, color: preparationNoteColor(note.id) })));
   }
   if (routePath === "/preparation-notes" && method === "POST") {
     const input = bodyOf(init);
-    const { data, error } = await supabase.from("preparation_notes").insert({ title: input.title, content: input.content, color: input.color }).select("id, title, content, color, created_at, updated_at").single();
-    return error ? failure(error.message, errorStatus(error.code)) : json(data, 201);
+    const result = await supabase.from("preparation_notes").insert({ title: input.title, content: input.content, color: input.color }).select("id, title, content, color, created_at, updated_at").single();
+    if (!result.error) return json(result.data, 201);
+    if (!isMissingPreparationNoteColor(result.error)) return failure(result.error.message, errorStatus(result.error.code));
+    const fallback = await supabase.from("preparation_notes").insert({ title: input.title, content: input.content }).select("id, title, content, created_at, updated_at").single();
+    return fallback.error ? failure(fallback.error.message, errorStatus(fallback.error.code)) : json({ ...fallback.data, color: input.color ?? preparationNoteColor(fallback.data.id) }, 201);
   }
 
   match = routePath.match(/^\/preparation-notes\/(\d+)$/);
@@ -210,8 +228,11 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const noteId = Number(match[1]);
     if (method === "PUT") {
       const input = bodyOf(init);
-      const { data, error } = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, color: input.color }).eq("id", noteId).select("id, title, content, color, created_at, updated_at").single();
-      return error ? failure(error.message, errorStatus(error.code)) : json(data);
+      const result = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, color: input.color }).eq("id", noteId).select("id, title, content, color, created_at, updated_at").single();
+      if (!result.error) return json(result.data);
+      if (!isMissingPreparationNoteColor(result.error)) return failure(result.error.message, errorStatus(result.error.code));
+      const fallback = await supabase.from("preparation_notes").update({ title: input.title, content: input.content }).eq("id", noteId).select("id, title, content, created_at, updated_at").single();
+      return fallback.error ? failure(fallback.error.message, errorStatus(fallback.error.code)) : json({ ...fallback.data, color: input.color ?? preparationNoteColor(noteId) });
     }
     if (method === "DELETE") {
       const { error } = await supabase.from("preparation_notes").delete().eq("id", noteId);
