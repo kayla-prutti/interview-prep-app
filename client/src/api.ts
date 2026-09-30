@@ -221,6 +221,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
       id: nextId(store.preparationNotes),
       title: String(input.title ?? "").trim(),
       content: String(input.content ?? "").trim(),
+      color: (input.color as PreparationNote["color"]) ?? "yellow",
       created_at: now,
       updated_at: now,
     };
@@ -240,6 +241,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
         ...store.preparationNotes[index],
         title: String(input.title ?? "").trim(),
         content: String(input.content ?? "").trim(),
+        color: (input.color as PreparationNote["color"]) ?? "yellow",
         updated_at: now,
       };
       writeStore(store);

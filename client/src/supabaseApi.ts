@@ -196,12 +196,12 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   }
 
   if (routePath === "/preparation-notes" && method === "GET") {
-    const { data, error } = await supabase.from("preparation_notes").select("id, title, content, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false });
+    const { data, error } = await supabase.from("preparation_notes").select("id, title, content, color, created_at, updated_at").order("updated_at", { ascending: false }).order("id", { ascending: false });
     return error ? failure(error.message, errorStatus(error.code)) : json(data ?? []);
   }
   if (routePath === "/preparation-notes" && method === "POST") {
     const input = bodyOf(init);
-    const { data, error } = await supabase.from("preparation_notes").insert({ title: input.title, content: input.content }).select("id, title, content, created_at, updated_at").single();
+    const { data, error } = await supabase.from("preparation_notes").insert({ title: input.title, content: input.content, color: input.color }).select("id, title, content, color, created_at, updated_at").single();
     return error ? failure(error.message, errorStatus(error.code)) : json(data, 201);
   }
 
@@ -210,7 +210,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const noteId = Number(match[1]);
     if (method === "PUT") {
       const input = bodyOf(init);
-      const { data, error } = await supabase.from("preparation_notes").update({ title: input.title, content: input.content }).eq("id", noteId).select("id, title, content, created_at, updated_at").single();
+      const { data, error } = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, color: input.color }).eq("id", noteId).select("id, title, content, color, created_at, updated_at").single();
       return error ? failure(error.message, errorStatus(error.code)) : json(data);
     }
     if (method === "DELETE") {

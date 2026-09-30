@@ -166,4 +166,16 @@ db.exec(`
   ON questions(interviewer_type, id DESC);
 `);
 
+const preparationNoteColumns = db
+  .prepare("PRAGMA table_info(preparation_notes)")
+  .all() as { name: string }[];
+
+if (!preparationNoteColumns.some((column) => column.name === "color")) {
+  db.exec(`
+    ALTER TABLE preparation_notes
+    ADD COLUMN color TEXT NOT NULL DEFAULT 'yellow'
+    CHECK (color IN ('yellow', 'pink', 'blue', 'green', 'orange'))
+  `);
+}
+
 export default db;

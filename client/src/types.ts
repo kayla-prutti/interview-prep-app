@@ -67,11 +67,15 @@ export type PreparationNote = {
   id: number;
   title: string;
   content: string;
+  color: PreparationNoteColor;
   created_at: string;
   updated_at: string;
 };
 
+export type PreparationNoteColor = "yellow" | "pink" | "blue" | "green" | "orange";
+
 export type PreparationNoteForm = {
   title: string;
   content: string;
+  color: PreparationNoteColor;
 };
