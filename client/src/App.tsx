@@ -862,9 +862,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
       </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center overflow-auto bg-slate-950/35 px-5 py-12">
-          <form className="w-full max-w-2xl rounded-md border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={handleSubmit} style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}>
-            <header className="cursor-grab select-none active:cursor-grabbing" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-slate-950/35 p-4 sm:p-6">
+          <form className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-[#D6D6D2] bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]" onSubmit={handleSubmit} style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}>
+            <header className="shrink-0 cursor-grab select-none border-b border-slate-200 bg-white px-6 py-5 active:cursor-grabbing" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-slate-400" aria-hidden="true">⠿</span>
                 <div>
@@ -874,54 +874,56 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </div>
             </header>
 
-            {error && <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
 
-            <label className="mt-5 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.interviewer_type} onChange={(event) => setForm({ ...form, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={form.interview_date} onChange={(event) => setForm({ ...form, interview_date: event.target.value })} /></label>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-24 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+              <label className={`${error ? "mt-5" : ""} grid gap-1.5 text-sm font-medium text-slate-700`}><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
+              <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} /></label>
+              <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.interviewer_type} onChange={(event) => setForm({ ...form, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
+              <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={form.interview_date} onChange={(event) => setForm({ ...form, interview_date: event.target.value })} /></label>
+              <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-24 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
 
-            <fieldset className="mt-5 border-t border-slate-200 pt-5">
-              <legend className="text-sm font-semibold text-slate-900"><RequiredLabel>Questions asked</RequiredLabel></legend>
-              <p className="mt-1 text-sm text-slate-600">Write each question as closely as you remember it.</p>
+              <fieldset className="mt-5 border-t border-slate-200 pt-5">
+                <legend className="text-sm font-semibold text-slate-900"><RequiredLabel>Questions asked</RequiredLabel></legend>
+                <p className="mt-1 text-sm text-slate-600">Write each question as closely as you remember it.</p>
 
-              <div className="mt-3 grid gap-2.5">
-                {questionRows.map((question, index) => (
-                  <div className="flex gap-2" key={index}>
-                    <input
-                      className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                      placeholder={`Question ${index + 1}`}
-                      value={question}
-                      onChange={(event) => {
-                        const nextQuestions = [...questionRows];
-                        nextQuestions[index] = event.target.value;
-                        setForm({ ...form, questions: nextQuestions });
-                      }}
-                    />
-                    {index > 0 && (
-                      <button
-                        className="rounded-lg px-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                        type="button"
-                        onClick={() => setForm({ ...form, questions: questionRows.filter((_, itemIndex) => itemIndex !== index) })}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                <div className="mt-3 grid gap-2.5">
+                  {questionRows.map((question, index) => (
+                    <div className="flex gap-2" key={index}>
+                      <input
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        placeholder={`Question ${index + 1}`}
+                        value={question}
+                        onChange={(event) => {
+                          const nextQuestions = [...questionRows];
+                          nextQuestions[index] = event.target.value;
+                          setForm({ ...form, questions: nextQuestions });
+                        }}
+                      />
+                      {index > 0 && (
+                        <button
+                          className="rounded-lg px-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          type="button"
+                          onClick={() => setForm({ ...form, questions: questionRows.filter((_, itemIndex) => itemIndex !== index) })}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-              <button
-                className="mt-3 text-sm font-semibold text-[#C95712] hover:text-[#9A3D00]"
-                type="button"
-                onClick={() => setForm({ ...form, questions: [...questionRows, ""] })}
-              >
-                + Add question row
-              </button>
-            </fieldset>
+                <button
+                  className="mt-3 text-sm font-semibold text-[#C95712] hover:text-[#9A3D00]"
+                  type="button"
+                  onClick={() => setForm({ ...form, questions: [...questionRows, ""] })}
+                >
+                  + Add question row
+                </button>
+              </fieldset>
+            </div>
 
-            <footer className="mt-6 flex justify-end gap-3">
+            <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
               <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60" disabled={isSaving} type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canSaveInterview}>{isSaving ? "Saving..." : "Save interview"}</button>
             </footer>
@@ -977,7 +979,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
                 </section>
               </div>
             ) : (
-              <form className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1" onSubmit={saveInterviewDetail}>
+              <form className="flex min-h-0 flex-1 flex-col overflow-hidden" onSubmit={saveInterviewDetail}>
+                <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-5 pt-5">
                 <label className="grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.company} onChange={(event) => setEditForm({ ...editForm, company: event.target.value })} /></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Role</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.role} onChange={(event) => setEditForm({ ...editForm, role: event.target.value })} /></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.interviewer_type} onChange={(event) => setEditForm({ ...editForm, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
@@ -1016,7 +1019,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
                   )}
                   <button className="mt-3 text-sm font-bold text-[#C95712] hover:text-[#9A3D00]" type="button" onClick={() => setEditQuestions((current) => [...current, { id: null, question_text: "" }])}>+ Add question</button>
                 </fieldset>
-                <footer className="mt-6 flex justify-end gap-3">
+                </div>
+                <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white pt-4">
                   <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-[#F4F4F2]" type="button" onClick={() => { setIsEditingDetail(false); setEditQuestions(selectedQuestions.map((question) => ({ id: question.id, question_text: question.question_text }))); setEditForm({ company: selectedInterview.company, role: selectedInterview.role, notes: selectedInterview.notes, interviewer_type: selectedInterview.interviewer_type, interview_date: selectedInterview.interview_date ?? "" }); }}>Cancel</button>
                   <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-wait disabled:opacity-70" disabled={isSaving || isDetailLoading} type="submit">{isSaving ? "Saving..." : "Save changes"}</button>
                 </footer>
