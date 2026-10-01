@@ -19,8 +19,10 @@ import { Sidebar } from "./components/Sidebar";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { API_URL } from "./config";
 import { interviewColumns } from "./features/interviews/columns";
+import { InterviewMobileCard } from "./features/interviews/InterviewMobileCard";
 import type { InterviewGridContext } from "./features/interviews/types";
 import { questionColumns } from "./features/questions/columns";
+import { QuestionMobileCard } from "./features/questions/QuestionMobileCard";
 import type { QuestionGridContext } from "./features/questions/types";
 import { PracticePage } from "./features/practice/PracticePage";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
@@ -314,6 +316,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   }
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (window.innerWidth < 640) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStart.current = {
       pointerX: event.clientX,
@@ -753,7 +756,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
         onShowGuide={() => setIsGuideOpen(true)}
       />
 
-      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 pb-9 sm:px-9 md:pb-5 lg:px-10" id="top">
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-9 md:pb-5 lg:px-10" id="top">
         {page === "interviews" ? (
           <section className="w-full md:flex md:h-full md:min-h-0 md:flex-col" id="interviews">
             <PageHeader
@@ -781,7 +784,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               {!isLoading && !error && interviews.length === 0 && <p className="p-5 text-sm text-stone-500">No interviews match this folder and company search.</p>}
 
               {!isLoading && !error && interviews.length > 0 && (
-                <DataTable columns={interviewColumns} context={gridContext} rows={interviews} onRowClick={(interview) => void openInterview(interview)} pagination={{ page: interviewPage, pageSize: interviewPageSize, totalRows: interviewTotal, onPageChange: setInterviewPage, onPageSizeChange: (pageSize) => { setInterviewPageSize(pageSize); setInterviewPage(0); } }} />
+                <DataTable columns={interviewColumns} context={gridContext} rows={interviews} rowKey={(interview) => interview.id} renderMobileRow={(interview) => <InterviewMobileCard interview={interview} onDelete={gridContext.onDelete} onEdit={gridContext.onEdit} onView={gridContext.onView} />} onRowClick={(interview) => void openInterview(interview)} pagination={{ page: interviewPage, pageSize: interviewPageSize, totalRows: interviewTotal, onPageChange: setInterviewPage, onPageSizeChange: (pageSize) => { setInterviewPageSize(pageSize); setInterviewPage(0); } }} />
               )}
             </section>
             </div>
@@ -819,7 +822,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
                   {questions.length === 0 ? (
                     <p className="px-6 py-8 text-sm text-[#686868]">No matching questions in this folder.</p>
                   ) : (
-                    <DataTable columns={questionColumns} context={questionGridContext} pagination={{ page: questionPage, pageSize: questionPageSize, totalRows: questionTotal, onPageChange: setQuestionPage, onPageSizeChange: (pageSize) => { setQuestionPageSize(pageSize); setQuestionPage(0); } }} refreshKey={[activePracticeId, ...practiceSourceQuestionIds, ...pendingPracticeAdds].join("-")} rows={questions} />
+                    <DataTable columns={questionColumns} context={questionGridContext} pagination={{ page: questionPage, pageSize: questionPageSize, totalRows: questionTotal, onPageChange: setQuestionPage, onPageSizeChange: (pageSize) => { setQuestionPageSize(pageSize); setQuestionPage(0); } }} refreshKey={[activePracticeId, ...practiceSourceQuestionIds, ...pendingPracticeAdds].join("-")} rows={questions} rowKey={(question) => question.id} renderMobileRow={(question) => <QuestionMobileCard actions={questionGridContext} question={question} />} />
                   )}
                 </section>
               </div>
@@ -859,11 +862,11 @@ function App({ accountEmail, onSignOut }: AppProps) {
       </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-slate-950/35 p-4 sm:p-6">
-          <form className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-[#D6D6D2] bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]" onSubmit={handleSubmit} style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}>
-            <header className="shrink-0 cursor-grab select-none border-b border-slate-200 bg-white px-6 py-5 active:cursor-grabbing" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-slate-950/35 p-2 sm:p-6">
+          <form className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-[#D6D6D2] bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]" onSubmit={handleSubmit} style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}>
+            <header className="shrink-0 select-none border-b border-slate-200 bg-white px-4 py-4 sm:cursor-grab sm:px-6 sm:py-5 sm:active:cursor-grabbing" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-slate-400" aria-hidden="true">⠿</span>
+                <span className="mt-0.5 hidden text-slate-400 sm:block" aria-hidden="true">⠿</span>
                 <div>
                   <h2 className="text-2xl font-bold tracking-tight text-[#202020]">Record an interview</h2>
                   <p className="mt-1 text-sm text-slate-600">Save the context first. Questions come next.</p>
@@ -871,7 +874,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </div>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
 
               <label className={`${error ? "mt-5" : ""} grid gap-1.5 text-sm font-medium text-slate-700`}><RequiredLabel>Company</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} /></label>
@@ -880,13 +883,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
               <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={form.interview_date} onChange={(event) => setForm({ ...form, interview_date: event.target.value })} /></label>
               <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-24 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
 
-              <fieldset className="mt-5 border-t border-slate-200 pt-5">
+              <fieldset className="mt-5 min-w-0 border-t border-slate-200 pt-5">
                 <legend className="text-sm font-semibold text-slate-900"><RequiredLabel>Questions asked</RequiredLabel></legend>
                 <p className="mt-1 text-sm text-slate-600">Write each question as closely as you remember it.</p>
 
                 <div className="mt-3 grid gap-2.5">
                   {questionRows.map((question, index) => (
-                    <div className="flex gap-2" key={index}>
+                    <div className="flex min-w-0 flex-col gap-2 min-[390px]:flex-row" key={index}>
                       <input
                         className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         placeholder={`Question ${index + 1}`}
@@ -920,7 +923,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </fieldset>
             </div>
 
-            <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
+            <footer className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
               <button className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60" disabled={isSaving} type="button" onClick={() => setIsModalOpen(false)}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !canSaveInterview}>{isSaving ? "Saving..." : "Save interview"}</button>
             </footer>
@@ -931,12 +934,12 @@ function App({ accountEmail, onSignOut }: AppProps) {
       {isGuideOpen && <WelcomeModal onClose={closeGuide} />}
 
       {selectedInterview && editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 sm:p-6">
-          <section className="flex h-[calc(100dvh-2rem)] max-h-[44rem] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-[#D6D6D2] bg-white p-6 shadow-2xl sm:h-[calc(100dvh-3rem)]" aria-label="Interview details" aria-modal="true" role="dialog">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-2 sm:p-6">
+          <section className="flex h-[calc(100dvh-1rem)] max-h-[44rem] w-full max-w-2xl flex-col overflow-hidden rounded-md border border-[#D6D6D2] bg-white p-4 shadow-2xl sm:h-[calc(100dvh-3rem)] sm:p-6" aria-label="Interview details" aria-modal="true" role="dialog">
             <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 pb-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Interview details</p>
-                <h2 className="mt-1 text-3xl font-bold tracking-tight text-[#202020]">{selectedInterview.company}</h2>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#202020] sm:text-3xl">{selectedInterview.company}</h2>
                 <p className="mt-1 text-sm text-slate-600">{selectedInterview.role} · {selectedInterview.interview_date ? formatDate(selectedInterview.interview_date) : formatDate(selectedInterview.created_at)}</p>
               </div>
               <button className="rounded-lg px-2 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-100" type="button" onClick={() => setSelectedInterview(null)}>Close</button>
@@ -983,7 +986,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interviewer type</RequiredLabel><select required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.interviewer_type} onChange={(event) => setEditForm({ ...editForm, interviewer_type: event.target.value as InterviewerType })}><option value="technical">Technical</option><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option></select></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><RequiredLabel>Interview date</RequiredLabel><input required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" type="date" value={editForm.interview_date} onChange={(event) => setEditForm({ ...editForm, interview_date: event.target.value })} /></label>
                 <label className="mt-4 grid gap-1.5 text-sm font-medium text-slate-700"><span>Notes <span className="font-normal text-slate-500">(optional)</span></span><textarea className="min-h-28 rounded-lg border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} /></label>
-                <fieldset className="mt-5 border-t border-[#D6D6D2] pt-5">
+                <fieldset className="mt-5 min-w-0 border-t border-[#D6D6D2] pt-5">
                   <legend className="text-sm font-semibold text-[#202020]">Questions asked</legend>
                   <p className="mt-1 text-sm text-[#686868]">Edit, remove, or add questions from this interview.</p>
                   {isDetailLoading ? (
@@ -992,7 +995,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
                     <div className="mt-3 grid gap-2.5">
                       {editQuestions.length === 0 && <p className="rounded-lg border border-dashed border-[#D6D6D2] px-4 py-3 text-sm text-[#686868]">No questions saved yet.</p>}
                       {editQuestions.map((question, index) => (
-                        <div className="flex items-start gap-2" key={question.id ?? `new-${index}`}>
+                        <div className="flex min-w-0 items-start gap-2" key={question.id ?? `new-${index}`}>
                           <span className="mt-3 w-6 shrink-0 text-right text-xs font-semibold text-slate-400">{String(index + 1).padStart(2, "0")}</span>
                           <textarea
                             aria-label={`Question ${index + 1}`}

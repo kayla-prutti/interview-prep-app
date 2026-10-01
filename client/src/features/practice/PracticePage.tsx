@@ -287,10 +287,10 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
               const isOpen = interview.id === openInterviewId;
               return (
                 <article className={`rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
-                  <div className={`flex items-stretch rounded-t-xl transition ${isOpen ? "bg-[#FFF7F0]" : "rounded-b-xl hover:bg-[#FAFAF8]"}`}>
+                  <div className={`flex flex-col rounded-t-xl transition sm:flex-row sm:items-stretch ${isOpen ? "bg-[#FFF7F0]" : "rounded-b-xl hover:bg-[#FAFAF8]"}`}>
                     <button
                       aria-expanded={isOpen}
-                      className="flex min-w-0 flex-1 items-center justify-between gap-5 px-5 py-5 text-left sm:px-6"
+                      className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-4 text-left sm:gap-5 sm:px-6 sm:py-5"
                       type="button"
                       onClick={() => {
                         const nextInterviewId = isOpen ? null : interview.id;
@@ -313,7 +313,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                         </svg>
                       </span>
                     </button>
-                    <div className="my-4 mr-4 flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 items-center justify-end gap-1 border-t border-[#E4E4E1] px-3 py-1 sm:my-4 sm:mr-4 sm:border-0 sm:p-0">
                       <button aria-label={`Edit ${interview.company} prep interview`} className="grid h-10 w-10 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit prep interview" type="button" onClick={() => { setModalError(""); setInterviewToEdit(interview); setEditInterviewForm({ company: interview.company, role: interview.role }); }}><PenIcon /></button>
                       <button aria-label={`Delete ${interview.company} prep interview`} className="grid h-10 w-10 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Delete prep interview" type="button" onClick={() => { setModalError(""); setInterviewToDelete(interview); }}><BinIcon /></button>
                     </div>
