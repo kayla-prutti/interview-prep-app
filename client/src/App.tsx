@@ -700,6 +700,20 @@ function App({ accountEmail, onSignOut }: AppProps) {
     await loadPracticeInterviews();
   }
 
+  async function updateCustomPracticeQuestion(practiceQuestionId: number, questionText: string) {
+    if (!activePracticeId) return;
+    const response = await apiFetch(`${API_URL}/practice-interviews/${activePracticeId}/questions/${practiceQuestionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_text: questionText }),
+    });
+    const result = (await response.json()) as PracticeQuestion | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not update the custom question.");
+    setPracticeQuestions((current) => current.map((question) => question.id === result.id ? { ...question, ...result } : question));
+    const cachedQuestions = practiceQuestionCache.current.get(activePracticeId);
+    if (cachedQuestions) practiceQuestionCache.current.set(activePracticeId, cachedQuestions.map((question) => question.id === result.id ? { ...question, ...result } : question));
+  }
+
   async function removePracticeQuestion(practiceQuestionId: number) {
     if (!activePracticeId) return;
     const removedSourceId = practiceQuestions.find((question) => question.id === practiceQuestionId)?.source_question_id;
@@ -837,8 +851,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onRetry={() => loadPracticeInterviews().catch(() => undefined)}
             onSaveAnswer={savePracticeAnswer}
             onSelectInterview={selectPracticeInterview}
-            onUpdateNote={updatePreparationNote}
             onUpdateInterview={updatePracticeInterview}
+            onUpdateNote={updatePreparationNote}
+            onUpdateQuestion={updateCustomPracticeQuestion}
           />
         )}
       </main>

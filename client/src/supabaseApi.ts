@@ -284,7 +284,11 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const practiceInterviewId = Number(match[1]);
     const questionId = Number(match[2]);
     if (method === "PUT") {
-      const { data, error } = await supabase.from("practice_questions").update({ answer: bodyOf(init).answer }).eq("id", questionId).eq("practice_interview_id", practiceInterviewId).select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").single();
+      const input = bodyOf(init);
+      const updateQuery = typeof input.question_text === "string"
+        ? supabase.from("practice_questions").update({ question_text: input.question_text.trim() }).eq("id", questionId).eq("practice_interview_id", practiceInterviewId).is("source_question_id", null)
+        : supabase.from("practice_questions").update({ answer: input.answer }).eq("id", questionId).eq("practice_interview_id", practiceInterviewId);
+      const { data, error } = await updateQuery.select("id, practice_interview_id, source_question_id, question_text, answer, sort_order, created_at, updated_at").single();
       return error ? failure(error.message, errorStatus(error.code)) : json(data);
     }
     if (method === "DELETE") {

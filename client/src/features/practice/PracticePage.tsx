@@ -35,6 +35,7 @@ type PracticePageProps = {
   onSelectInterview: (interviewId: number | null) => void;
   onUpdateNote: (noteId: number, form: PreparationNoteForm) => Promise<void>;
   onUpdateInterview: (interviewId: number, form: PracticeInterviewDetailsForm) => Promise<void>;
+  onUpdateQuestion: (questionId: number, questionText: string) => Promise<void>;
 };
 
 const emptyPracticeForm: PracticeInterviewForm = {
@@ -49,7 +50,7 @@ const preparationTabs: FolderTab<PreparationSection>[] = [
   { value: "notes", label: "Notes" },
 ];
 
-export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingNotes, isLoadingQuestions, notes, notesError, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onCreateNote, onDeleteInterview, onDeleteNote, onLoadNotes, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview, onUpdateInterview, onUpdateNote }: PracticePageProps) {
+export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingNotes, isLoadingQuestions, notes, notesError, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onCreateNote, onDeleteInterview, onDeleteNote, onLoadNotes, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview, onUpdateInterview, onUpdateNote, onUpdateQuestion }: PracticePageProps) {
   const [activeSection, setActiveSection] = useState<PreparationSection>("interviews");
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -64,6 +65,8 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
   const [answerDraft, setAnswerDraft] = useState("");
   const [customQuestionInterviewId, setCustomQuestionInterviewId] = useState<number | null>(null);
   const [customQuestionText, setCustomQuestionText] = useState("");
+  const [questionToEdit, setQuestionToEdit] = useState<PracticeQuestion | null>(null);
+  const [questionEditText, setQuestionEditText] = useState("");
   const [pageError, setPageError] = useState("");
   const [removingQuestionIds, setRemovingQuestionIds] = useState<Set<number>>(new Set());
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -123,6 +126,21 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
       setCustomQuestionText("");
     } catch (error) {
       setModalError(error instanceof Error ? error.message : "Could not add the custom question.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updateCustomQuestion() {
+    if (!questionToEdit || !questionEditText.trim() || isSaving) return;
+    setIsSaving(true);
+    setModalError("");
+    try {
+      await onUpdateQuestion(questionToEdit.id, questionEditText.trim());
+      setQuestionToEdit(null);
+      setQuestionEditText("");
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : "Could not update the custom question.");
     } finally {
       setIsSaving(false);
     }
@@ -260,8 +278,8 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             {interviews.map((interview) => {
               const isOpen = interview.id === openInterviewId;
               return (
-                <article className={`overflow-hidden rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
-                  <div className={`flex items-stretch transition ${isOpen ? "bg-[#FFF7F0]" : "hover:bg-[#FAFAF8]"}`}>
+                <article className={`rounded-xl border bg-white transition ${isOpen ? "border-[#F5822A] shadow-[0_14px_34px_rgba(32,32,32,0.08)]" : "border-[#D6D6D2] hover:border-[#BDBDB8]"}`} key={interview.id}>
+                  <div className={`flex items-stretch rounded-t-xl transition ${isOpen ? "bg-[#FFF7F0]" : "rounded-b-xl hover:bg-[#FAFAF8]"}`}>
                     <button
                       aria-expanded={isOpen}
                       className="flex min-w-0 flex-1 items-center justify-between gap-5 px-5 py-5 text-left sm:px-6"
@@ -313,7 +331,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                         </div>
                       ) : (
                         <>
-                          <div className="flex flex-col gap-3 border-b border-[#E4E4E1] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                          <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-[#E4E4E1] bg-white/95 px-5 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#686868]">Selected questions</p>
                             <div className="flex flex-wrap gap-2">
                               <button className="rounded-md bg-[#F5822A] px-3 py-2 text-xs font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setModalError(""); setCustomQuestionText(""); setCustomQuestionInterviewId(interview.id); }}>+ Custom question</button>
@@ -343,6 +361,9 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                                       )}
                                     </div>
                                     <div className="flex shrink-0 gap-1">
+                                      {question.source_question_id === null && (
+                                        <button aria-label="Edit custom question" className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit custom question" type="button" onClick={() => { setModalError(""); setQuestionToEdit(question); setQuestionEditText(question.question_text); }}><PenIcon /></button>
+                                      )}
                                       <button aria-label={removingQuestionIds.has(question.id) ? "Removing question" : "Remove from this prep interview"} className="grid h-9 w-9 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700 disabled:cursor-wait disabled:opacity-40" disabled={removingQuestionIds.has(question.id)} title="Remove from this prep interview" type="button" onClick={() => void removeQuestion(question.id)}><BinIcon /></button>
                                     </div>
                                   </div>
@@ -459,6 +480,23 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             <footer className="mt-6 flex justify-end gap-3">
               <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2]" disabled={isSaving} type="button" onClick={() => { setCustomQuestionInterviewId(null); setCustomQuestionText(""); }}>Cancel</button>
               <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || customQuestionText.trim() === ""} type="submit">{isSaving ? "Adding..." : "Add custom question"}</button>
+            </footer>
+          </form>
+        </div>
+      )}
+
+      {questionToEdit && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
+          <form className="w-full max-w-xl rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void updateCustomQuestion(); }}>
+            <header className="border-b border-[#D6D6D2] pb-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Custom preparation question</p>
+              <h2 className="mt-1 text-2xl font-bold text-[#202020]">Edit question</h2>
+            </header>
+            {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{modalError}</p>}
+            <label className="mt-5 grid gap-2 text-sm font-bold text-[#303030]"><RequiredLabel>Question</RequiredLabel><textarea autoFocus required className="min-h-32 resize-y rounded-md border border-[#D6D6D2] px-4 py-3 font-normal leading-6 outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" value={questionEditText} onChange={(event) => setQuestionEditText(event.target.value)} /></label>
+            <footer className="mt-6 flex justify-end gap-3">
+              <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2] disabled:opacity-60" disabled={isSaving} type="button" onClick={() => { setQuestionToEdit(null); setQuestionEditText(""); }}>Cancel</button>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !questionEditText.trim()} type="submit">{isSaving ? "Saving..." : "Save question"}</button>
             </footer>
           </form>
         </div>

@@ -307,7 +307,15 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     const index = store.practiceQuestions.findIndex((question) => question.id === questionId && question.practice_interview_id === practiceInterviewId);
     if (index < 0) return Promise.resolve(json({ error: "Practice question not found." }, 404));
     if (method === "PUT") {
-      store.practiceQuestions[index] = { ...store.practiceQuestions[index], answer: String(bodyOf(init).answer ?? "").trim(), updated_at: now };
+      const input = bodyOf(init);
+      if (typeof input.question_text === "string") {
+        if (store.practiceQuestions[index].source_question_id !== null) return Promise.resolve(json({ error: "Only custom questions can be edited here." }, 400));
+        const questionText = input.question_text.trim();
+        if (!questionText) return Promise.resolve(json({ error: "Question text is required." }, 400));
+        store.practiceQuestions[index] = { ...store.practiceQuestions[index], question_text: questionText, updated_at: now };
+      } else {
+        store.practiceQuestions[index] = { ...store.practiceQuestions[index], answer: String(input.answer ?? "").trim(), updated_at: now };
+      }
       const interview = store.practiceInterviews.find((item) => item.id === practiceInterviewId);
       if (interview) interview.updated_at = now;
       writeStore(store);

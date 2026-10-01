@@ -124,15 +124,26 @@ practiceRouter.post("/:practiceInterviewId/questions", (req, res) => {
 practiceRouter.put("/:practiceInterviewId/questions/:practiceQuestionId", (req, res) => {
   const practiceInterviewId = positiveId(req.params.practiceInterviewId);
   const practiceQuestionId = positiveId(req.params.practiceQuestionId);
-  const answer = (req.body as { answer?: unknown } | null)?.answer;
+  const { answer, question_text: questionTextInput } = (req.body ?? {}) as { answer?: unknown; question_text?: unknown };
   if (!practiceInterviewId || !practiceQuestionId) { res.status(400).json({ error: "Valid prep interview and question IDs are required." }); return; }
-  if (typeof answer !== "string") { res.status(400).json({ error: "Answer must be text." }); return; }
-
-  const result = db.prepare(`
-    UPDATE practice_questions
-    SET answer = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ? AND practice_interview_id = ?
-  `).run(answer.trim(), practiceQuestionId, practiceInterviewId);
+  let result;
+  if (typeof questionTextInput === "string") {
+    if (questionTextInput.trim() === "") { res.status(400).json({ error: "Question text is required." }); return; }
+    result = db.prepare(`
+      UPDATE practice_questions
+      SET question_text = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND practice_interview_id = ? AND source_question_id IS NULL
+    `).run(questionTextInput.trim(), practiceQuestionId, practiceInterviewId);
+  } else if (typeof answer === "string") {
+    result = db.prepare(`
+      UPDATE practice_questions
+      SET answer = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND practice_interview_id = ?
+    `).run(answer.trim(), practiceQuestionId, practiceInterviewId);
+  } else {
+    res.status(400).json({ error: "Answer or custom question text is required." });
+    return;
+  }
   if (result.changes === 0) { res.status(404).json({ error: "Practice question not found." }); return; }
   db.prepare("UPDATE practice_interviews SET updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(practiceInterviewId);
   res.json(db.prepare("SELECT * FROM practice_questions WHERE id = ?").get(practiceQuestionId));
