@@ -3,6 +3,8 @@ import { FolderTabs, type FolderTab } from "../../components/FolderTabs";
 import { BinIcon, PenIcon } from "../../components/Icons";
 import { PageHeader } from "../../components/PageHeader";
 import { RequiredLabel } from "../../components/RequiredLabel";
+import { SearchField } from "../../components/SearchField";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { interviewerLabel } from "../../lib/interviews";
 import type { PracticeInterview, PracticeInterviewDetailsForm, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteForm } from "../../types";
 import { NoteColorPicker } from "./NoteColorPicker";
@@ -77,6 +79,12 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
   const [noteModalError, setNoteModalError] = useState("");
   const [noteToDelete, setNoteToDelete] = useState<PreparationNote | null>(null);
   const [isDeletingNote, setIsDeletingNote] = useState(false);
+  const [noteSearch, setNoteSearch] = useState("");
+  const debouncedNoteSearch = useDebouncedValue(noteSearch);
+  const normalizedNoteSearch = debouncedNoteSearch.trim().toLocaleLowerCase();
+  const filteredNotes = normalizedNoteSearch
+    ? notes.filter((note) => note.title.toLocaleLowerCase().includes(normalizedNoteSearch))
+    : notes;
   const canCreateInterview = createForm.company.trim() !== ""
     && createForm.role.trim() !== ""
     && createForm.interviewer_type.trim() !== "";
@@ -332,7 +340,10 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                       ) : (
                         <>
                           <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-[#E4E4E1] bg-white/95 px-5 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#686868]">Selected questions</p>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#686868]">Selected questions</p>
+                              <p className="mt-0.5 truncate text-sm font-bold text-[#202020]">{interview.company}</p>
+                            </div>
                             <div className="flex flex-wrap gap-2">
                               <button className="rounded-md bg-[#F5822A] px-3 py-2 text-xs font-bold text-[#202020] hover:bg-[#C95712] hover:text-white" type="button" onClick={() => { setModalError(""); setCustomQuestionText(""); setCustomQuestionInterviewId(interview.id); }}>+ Custom question</button>
                               <button className="rounded-md border border-[#F5822A] px-3 py-2 text-xs font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => onBrowseQuestions(interview.id)}>Add from library</button>
@@ -390,6 +401,12 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             </div>
           </header>
 
+          {!notesError && (notes.length > 0 || noteSearch) && (
+            <div className="shrink-0 border-b border-[#D6D6D2] bg-[#FAFAF8] px-6 py-4">
+              <SearchField ariaLabel="Search notes by title" placeholder="Search notes by title" value={noteSearch} onChange={setNoteSearch} onClear={() => setNoteSearch("")} />
+            </div>
+          )}
+
           {isLoadingNotes && <p className="px-6 py-8 text-sm text-[#686868]">Loading notes...</p>}
           {notesError && <div className="m-5 flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert"><span>{notesError}</span><button className="w-fit rounded-md border border-red-300 px-3 py-2 font-bold hover:bg-red-100" type="button" onClick={onLoadNotes}>Try again</button></div>}
           {!isLoadingNotes && !notesError && notes.length === 0 && (
@@ -398,8 +415,8 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
             </div>
           )}
           {!isLoadingNotes && !notesError && notes.length > 0 && (
-            <div className="grid min-h-0 flex-1 auto-rows-max gap-x-5 gap-y-7 overflow-y-auto bg-[#F4F4F2] p-6 pb-10 md:grid-cols-2 xl:grid-cols-3">
-              {notes.map((note, index) => (
+            filteredNotes.length > 0 ? <div className="grid min-h-0 flex-1 auto-rows-max gap-x-5 gap-y-7 overflow-y-auto bg-[#F4F4F2] p-6 pb-10 md:grid-cols-2 xl:grid-cols-3">
+              {filteredNotes.map((note, index) => (
                 <PreparationNoteCard
                   index={index}
                   key={note.id}
@@ -409,7 +426,7 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                   onView={setViewedNote}
                 />
               ))}
-            </div>
+            </div> : <div className="grid flex-1 place-items-center bg-[#F4F4F2] px-6 py-12 text-center"><div><h3 className="text-xl font-bold text-[#202020]">No matching notes</h3><p className="mt-2 text-sm text-[#686868]">Try a different title or clear the search.</p><button className="mt-5 rounded-md border border-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#9A3D00] hover:bg-[#FFE4D1]" type="button" onClick={() => setNoteSearch("")}>Clear search</button></div></div>
           )}
         </section>
       )}
