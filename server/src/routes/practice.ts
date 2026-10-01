@@ -47,6 +47,31 @@ practiceRouter.post("/", (req, res) => {
   `).get(result.lastInsertRowid));
 });
 
+practiceRouter.put("/:practiceInterviewId", (req, res) => {
+  const practiceInterviewId = positiveId(req.params.practiceInterviewId);
+  const { company, role } = (req.body ?? {}) as Record<string, unknown>;
+  if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }
+  if (typeof company !== "string" || company.trim() === "") { res.status(400).json({ error: "Company is required." }); return; }
+  if (typeof role !== "string" || role.trim() === "") { res.status(400).json({ error: "Role is required." }); return; }
+
+  const result = db.prepare(`
+    UPDATE practice_interviews
+    SET company = ?, role = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(company.trim(), role.trim(), practiceInterviewId);
+  if (result.changes === 0) { res.status(404).json({ error: "Prep interview not found." }); return; }
+
+  res.json(db.prepare(`
+    SELECT practice_interviews.*,
+      COUNT(practice_questions.id) AS question_count,
+      SUM(CASE WHEN trim(practice_questions.answer) <> '' THEN 1 ELSE 0 END) AS answered_count
+    FROM practice_interviews
+    LEFT JOIN practice_questions ON practice_questions.practice_interview_id = practice_interviews.id
+    WHERE practice_interviews.id = ?
+    GROUP BY practice_interviews.id
+  `).get(practiceInterviewId));
+});
+
 practiceRouter.delete("/:practiceInterviewId", (req, res) => {
   const practiceInterviewId = positiveId(req.params.practiceInterviewId);
   if (!practiceInterviewId) { res.status(400).json({ error: "Prep interview ID must be a positive number." }); return; }

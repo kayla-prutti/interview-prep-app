@@ -4,7 +4,7 @@ import { BinIcon, PenIcon } from "../../components/Icons";
 import { PageHeader } from "../../components/PageHeader";
 import { RequiredLabel } from "../../components/RequiredLabel";
 import { interviewerLabel } from "../../lib/interviews";
-import type { PracticeInterview, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteForm } from "../../types";
+import type { PracticeInterview, PracticeInterviewDetailsForm, PracticeInterviewForm, PracticeQuestion, PreparationNote, PreparationNoteForm } from "../../types";
 import { NoteColorPicker } from "./NoteColorPicker";
 import { PreparationNoteCard } from "./PreparationNoteCard";
 import { PreparationNoteViewModal } from "./PreparationNoteViewModal";
@@ -34,6 +34,7 @@ type PracticePageProps = {
   onSaveAnswer: (questionId: number, answer: string) => Promise<void>;
   onSelectInterview: (interviewId: number | null) => void;
   onUpdateNote: (noteId: number, form: PreparationNoteForm) => Promise<void>;
+  onUpdateInterview: (interviewId: number, form: PracticeInterviewDetailsForm) => Promise<void>;
 };
 
 const emptyPracticeForm: PracticeInterviewForm = {
@@ -48,7 +49,7 @@ const preparationTabs: FolderTab<PreparationSection>[] = [
   { value: "notes", label: "Notes" },
 ];
 
-export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingNotes, isLoadingQuestions, notes, notesError, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onCreateNote, onDeleteInterview, onDeleteNote, onLoadNotes, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview, onUpdateNote }: PracticePageProps) {
+export function PracticePage({ accountControl, error, interviews, isLoadingInterviews, isLoadingNotes, isLoadingQuestions, notes, notesError, questionsError, questions, onAddCustomQuestion, onBrowseQuestions, onCreateInterview, onCreateNote, onDeleteInterview, onDeleteNote, onLoadNotes, onRemoveQuestion, onRetry, onSaveAnswer, onSelectInterview, onUpdateInterview, onUpdateNote }: PracticePageProps) {
   const [activeSection, setActiveSection] = useState<PreparationSection>("interviews");
   const [openInterviewId, setOpenInterviewId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -57,6 +58,8 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalError, setModalError] = useState("");
   const [interviewToDelete, setInterviewToDelete] = useState<PracticeInterview | null>(null);
+  const [interviewToEdit, setInterviewToEdit] = useState<PracticeInterview | null>(null);
+  const [editInterviewForm, setEditInterviewForm] = useState<PracticeInterviewDetailsForm>({ company: "", role: "" });
   const [selectedQuestion, setSelectedQuestion] = useState<PracticeQuestion | null>(null);
   const [answerDraft, setAnswerDraft] = useState("");
   const [customQuestionInterviewId, setCustomQuestionInterviewId] = useState<number | null>(null);
@@ -137,6 +140,20 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
       setModalError(error instanceof Error ? error.message : "Could not delete the prep interview.");
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function updateInterview() {
+    if (!interviewToEdit || !editInterviewForm.company.trim() || !editInterviewForm.role.trim() || isSaving) return;
+    setIsSaving(true);
+    setModalError("");
+    try {
+      await onUpdateInterview(interviewToEdit.id, { company: editInterviewForm.company.trim(), role: editInterviewForm.role.trim() });
+      setInterviewToEdit(null);
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : "Could not update the prep interview.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -270,7 +287,10 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
                         </svg>
                       </span>
                     </button>
-                    <button aria-label={`Delete ${interview.company} prep interview`} className="my-4 mr-4 grid h-10 w-10 shrink-0 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Delete prep interview" type="button" onClick={() => { setModalError(""); setInterviewToDelete(interview); }}><BinIcon /></button>
+                    <div className="my-4 mr-4 flex shrink-0 items-center gap-1">
+                      <button aria-label={`Edit ${interview.company} prep interview`} className="grid h-10 w-10 place-items-center rounded-md text-[#686868] hover:bg-[#FFE4D1] hover:text-[#C95712]" title="Edit prep interview" type="button" onClick={() => { setModalError(""); setInterviewToEdit(interview); setEditInterviewForm({ company: interview.company, role: interview.role }); }}><PenIcon /></button>
+                      <button aria-label={`Delete ${interview.company} prep interview`} className="grid h-10 w-10 place-items-center rounded-md text-[#686868] hover:bg-red-50 hover:text-red-700" title="Delete prep interview" type="button" onClick={() => { setModalError(""); setInterviewToDelete(interview); }}><BinIcon /></button>
+                    </div>
                   </div>
 
                   {isOpen && (
@@ -404,6 +424,25 @@ export function PracticePage({ accountControl, error, interviews, isLoadingInter
               <button className="rounded-md bg-red-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-800 disabled:opacity-60" disabled={isDeleting} type="button" onClick={() => void deleteInterview()}>{isDeleting ? "Deleting..." : "Delete prep interview"}</button>
             </footer>
           </section>
+        </div>
+      )}
+
+      {interviewToEdit && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
+          <form className="w-full max-w-lg rounded-xl border border-[#D6D6D2] bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void updateInterview(); }}>
+            <header className="border-b border-[#D6D6D2] pb-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#C95712]">Preparation setup</p>
+              <h2 className="mt-1 text-2xl font-bold text-[#202020]">Edit prep interview</h2>
+              <p className="mt-2 text-sm text-[#686868]">Questions and saved answers will stay with this preparation.</p>
+            </header>
+            {modalError && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{modalError}</p>}
+            <label className="mt-5 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Company</RequiredLabel><input autoFocus required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" value={editInterviewForm.company} onChange={(event) => setEditInterviewForm({ ...editInterviewForm, company: event.target.value })} /></label>
+            <label className="mt-4 grid gap-1.5 text-sm font-bold text-[#303030]"><RequiredLabel>Role</RequiredLabel><input required className="rounded-md border border-[#D6D6D2] px-3 py-2.5 font-normal outline-none focus:border-[#F5822A] focus:ring-2 focus:ring-[#FFE4D1]" value={editInterviewForm.role} onChange={(event) => setEditInterviewForm({ ...editInterviewForm, role: event.target.value })} /></label>
+            <footer className="mt-6 flex justify-end gap-3">
+              <button className="rounded-md border border-[#D6D6D2] px-4 py-2.5 text-sm font-bold text-[#4A4A4A] hover:bg-[#F4F4F2] disabled:opacity-60" disabled={isSaving} type="button" onClick={() => setInterviewToEdit(null)}>Cancel</button>
+              <button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:cursor-not-allowed disabled:bg-[#D6D6D2] disabled:text-[#8A8A86]" disabled={isSaving || !editInterviewForm.company.trim() || !editInterviewForm.role.trim()} type="submit">{isSaving ? "Saving..." : "Save changes"}</button>
+            </footer>
+          </form>
         </div>
       )}
 

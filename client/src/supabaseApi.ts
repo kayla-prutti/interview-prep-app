@@ -200,9 +200,17 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
   }
 
   match = routePath.match(/^\/practice-interviews\/(\d+)$/);
-  if (match && method === "DELETE") {
-    const { error } = await supabase.from("practice_interviews").delete().eq("id", Number(match[1]));
-    return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
+  if (match) {
+    const practiceInterviewId = Number(match[1]);
+    if (method === "PUT") {
+      const input = bodyOf(init);
+      const { data, error } = await supabase.from("practice_interviews").update({ company: input.company, role: input.role }).eq("id", practiceInterviewId).select("id, company, role, interviewer_type, created_at, updated_at").single();
+      return error ? failure(error.message, errorStatus(error.code)) : json(data);
+    }
+    if (method === "DELETE") {
+      const { error } = await supabase.from("practice_interviews").delete().eq("id", practiceInterviewId);
+      return error ? failure(error.message, errorStatus(error.code)) : new Response(null, { status: 204 });
+    }
   }
 
   if (routePath === "/preparation-notes" && method === "GET") {

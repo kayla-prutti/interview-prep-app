@@ -204,12 +204,27 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
   }
 
   match = path.match(/^\/practice-interviews\/(\d+)$/);
-  if (match && method === "DELETE") {
+  if (match) {
     const id = Number(match[1]);
-    store.practiceInterviews = store.practiceInterviews.filter((item) => item.id !== id);
-    store.practiceQuestions = store.practiceQuestions.filter((question) => question.practice_interview_id !== id);
-    writeStore(store);
-    return Promise.resolve(new Response(null, { status: 204 }));
+    const index = store.practiceInterviews.findIndex((item) => item.id === id);
+    if (index < 0) return Promise.resolve(json({ error: "Prep interview not found." }, 404));
+    if (method === "PUT") {
+      const input = bodyOf(init);
+      store.practiceInterviews[index] = {
+        ...store.practiceInterviews[index],
+        company: String(input.company ?? "").trim(),
+        role: String(input.role ?? "").trim(),
+        updated_at: now,
+      };
+      writeStore(store);
+      return Promise.resolve(json(store.practiceInterviews[index]));
+    }
+    if (method === "DELETE") {
+      store.practiceInterviews.splice(index, 1);
+      store.practiceQuestions = store.practiceQuestions.filter((question) => question.practice_interview_id !== id);
+      writeStore(store);
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
   }
 
   if (path === "/preparation-notes" && method === "GET") {

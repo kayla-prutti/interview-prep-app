@@ -63,6 +63,11 @@ export type PracticeInterviewForm = {
   interviewer_type: InterviewerType;
 };
 
+export type PracticeInterviewDetailsForm = {
+  company: string;
+  role: string;
+};
+
 export type PreparationNote = {
   id: number;
   title: string;

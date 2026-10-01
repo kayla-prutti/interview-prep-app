@@ -40,6 +40,7 @@ import type {
   InterviewerType,
   Page,
   PracticeInterview,
+  PracticeInterviewDetailsForm,
   PracticeInterviewForm,
   PracticeQuestion,
   PreparationNote,
@@ -583,6 +584,19 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setPracticeSourceQuestionIds(new Set());
   }
 
+  async function updatePracticeInterview(practiceInterviewId: number, details: PracticeInterviewDetailsForm) {
+    const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(details),
+    });
+    const result = (await response.json()) as PracticeInterview | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not update the prep interview.");
+    setPracticeInterviews((current) => current.map((interview) => interview.id === practiceInterviewId
+      ? { ...result, question_count: interview.question_count, answered_count: interview.answered_count }
+      : interview));
+  }
+
   async function deletePracticeInterview(practiceInterviewId: number) {
     const response = await apiFetch(`${API_URL}/practice-interviews/${practiceInterviewId}`, { method: "DELETE" });
     if (!response.ok) throw new Error("Could not delete the prep interview.");
@@ -824,6 +838,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onSaveAnswer={savePracticeAnswer}
             onSelectInterview={selectPracticeInterview}
             onUpdateNote={updatePreparationNote}
+            onUpdateInterview={updatePracticeInterview}
           />
         )}
       </main>
