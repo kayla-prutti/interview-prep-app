@@ -236,10 +236,11 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const noteId = Number(match[1]);
     if (method === "PUT") {
       const input = bodyOf(init);
-      const result = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, color: input.color }).eq("id", noteId).select("id, title, content, color, created_at, updated_at").single();
+      const updatedAt = new Date().toISOString();
+      const result = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, color: input.color, updated_at: updatedAt }).eq("id", noteId).select("id, title, content, color, created_at, updated_at").single();
       if (!result.error) return json(result.data);
       if (!isMissingPreparationNoteColor(result.error)) return failure(result.error.message, errorStatus(result.error.code));
-      const fallback = await supabase.from("preparation_notes").update({ title: input.title, content: input.content }).eq("id", noteId).select("id, title, content, created_at, updated_at").single();
+      const fallback = await supabase.from("preparation_notes").update({ title: input.title, content: input.content, updated_at: updatedAt }).eq("id", noteId).select("id, title, content, created_at, updated_at").single();
       return fallback.error ? failure(fallback.error.message, errorStatus(fallback.error.code)) : json({ ...fallback.data, color: input.color ?? preparationNoteColor(noteId) });
     }
     if (method === "DELETE") {

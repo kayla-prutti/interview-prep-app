@@ -50,6 +50,13 @@ import type {
   Question,
 } from "./types";
 
+function sortPreparationNotesByModifiedDate(notes: PreparationNote[]) {
+  return [...notes].sort((first, second) => {
+    const modifiedDateDifference = Date.parse(second.updated_at) - Date.parse(first.updated_at);
+    return modifiedDateDifference || second.id - first.id;
+  });
+}
+
 type AppProps = {
   accountEmail?: string;
   onSignOut?: () => Promise<void>;
@@ -272,7 +279,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     try {
       const response = await apiFetch(`${API_URL}/preparation-notes`);
       if (!response.ok) throw new Error("Could not load preparation notes.");
-      setPreparationNotes((await response.json()) as PreparationNote[]);
+      setPreparationNotes(sortPreparationNotesByModifiedDate((await response.json()) as PreparationNote[]));
       preparationNotesLoaded.current = true;
     } catch (caughtError) {
       setPreparationNotesError(caughtError instanceof Error ? caughtError.message : "Could not load preparation notes.");
@@ -620,7 +627,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
     });
     const result = (await response.json()) as PreparationNote | { error: string };
     if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not create the note.");
-    setPreparationNotes((current) => [result, ...current]);
+    setPreparationNotes((current) => sortPreparationNotesByModifiedDate([result, ...current]));
     preparationNotesLoaded.current = true;
   }
 
@@ -632,7 +639,9 @@ function App({ accountEmail, onSignOut }: AppProps) {
     });
     const result = (await response.json()) as PreparationNote | { error: string };
     if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not update the note.");
-    setPreparationNotes((current) => current.map((note) => note.id === noteId ? result : note));
+    setPreparationNotes((current) => sortPreparationNotesByModifiedDate(
+      current.map((note) => note.id === noteId ? result : note),
+    ));
   }
 
   async function deletePreparationNote(noteId: number) {
