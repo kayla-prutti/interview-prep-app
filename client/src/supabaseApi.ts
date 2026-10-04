@@ -57,64 +57,21 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
 
   if (routePath === "/questions/page" && method === "GET") {
     const search = (query.get("search") ?? "").trim();
-    const relationSearch = search.replace(/[,%()]/g, " ").trim();
     const requestedType = query.get("type") ?? "all";
     const type: InterviewFilter = ["recruiter", "hiring_manager", "technical"].includes(requestedType) ? requestedType as InterviewerType : "all";
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
-    const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0);
+    const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0) || null;
     const favoriteOnly = query.get("favoriteOnly") === "true";
-    let matchingQuestionIds: number[] | null = null;
-
-    if (search) {
-      const [textMatches, interviewMatches] = await Promise.all([
-        supabase.from("questions").select("id").ilike("question_text", `%${search}%`),
-        relationSearch
-          ? supabase.from("interviews").select("id").or(`company.ilike.%${relationSearch}%,role.ilike.%${relationSearch}%`)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      if (textMatches.error) return failure(textMatches.error.message, errorStatus(textMatches.error.code));
-      if (interviewMatches.error) return failure(interviewMatches.error.message, errorStatus(interviewMatches.error.code));
-      const interviewIds = (interviewMatches.data ?? []).map((item) => item.id);
-      const relatedMatches = interviewIds.length > 0
-        ? await supabase.from("questions").select("id").in("interview_id", interviewIds)
-        : { data: [], error: null };
-      if (relatedMatches.error) return failure(relatedMatches.error.message, errorStatus(relatedMatches.error.code));
-      matchingQuestionIds = [...new Set([...(textMatches.data ?? []).map((item) => item.id), ...(relatedMatches.data ?? []).map((item) => item.id)])];
-      if (matchingQuestionIds.length === 0) return json({ items: [], total: 0 });
-    }
-
-    const pageSelection = practiceInterviewId
-      ? "id, question_text, created_at, interview_id, is_favorite, favorite_answer, interviews!inner(company, role, interviewer_type), practice_questions(practice_interview_id)"
-      : "id, question_text, created_at, interview_id, is_favorite, favorite_answer, interviews!inner(company, role, interviewer_type)";
-    let pageQuery = supabase.from("questions").select(pageSelection, { count: "exact" });
-    if (matchingQuestionIds) pageQuery = pageQuery.in("id", matchingQuestionIds);
-    if (type !== "all") pageQuery = pageQuery.eq("interviews.interviewer_type", type);
-    if (favoriteOnly) pageQuery = pageQuery.eq("is_favorite", true);
-    if (practiceInterviewId) pageQuery = pageQuery.eq("practice_questions.practice_interview_id", practiceInterviewId);
-
-    try {
-      const pageResult = await pageQuery.order("id", { ascending: false }).range(offset, offset + limit - 1);
-      if (pageResult.error) return failure(pageResult.error.message, errorStatus(pageResult.error.code));
-      const rows = (pageResult.data ?? []) as unknown as Array<{
-        id: number;
-        question_text: string;
-        created_at: string;
-        interview_id: number;
-        is_favorite: boolean;
-        favorite_answer: string;
-        interviews: { company: string; role: string; interviewer_type: Question["interviewer_type"] };
-        practice_questions?: { practice_interview_id: number }[];
-      }>;
-      const items = rows.map((row) => {
-        const interview = row.interviews as unknown as { company: string; role: string; interviewer_type: Question["interviewer_type"] };
-        const selected = row.practice_questions ?? [];
-        return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type, is_added_to_practice: selected.length > 0, is_favorite: row.is_favorite, favorite_answer: row.favorite_answer };
-      });
-      return json({ items, total: pageResult.count ?? 0 });
-    } catch (caughtError) {
-      return failure(caughtError instanceof Error ? caughtError.message : "Could not load questions.");
-    }
+    const { data, error } = await supabase.rpc("search_questions_page", {
+      p_search: search,
+      p_type: type,
+      p_favorite_only: favoriteOnly,
+      p_practice_interview_id: practiceInterviewId,
+      p_offset: offset,
+      p_limit: limit,
+    });
+    return error ? failure(error.message, errorStatus(error.code)) : json(data ?? { items: [], total: 0 });
   }
 
   if (routePath === "/interviews" && method === "GET") {
