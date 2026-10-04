@@ -59,6 +59,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
   const method = (init?.method ?? "GET").toUpperCase();
   const store = readStore();
   const now = new Date().toISOString();
+  let match: RegExpMatchArray | null;
 
   if (path === "/interviews" && method === "GET") {
     return Promise.resolve(json([...store.interviews].sort((a, b) => (b.interview_date ?? "").localeCompare(a.interview_date ?? "") || b.id - a.id)));
@@ -105,6 +106,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
     const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0);
+    const favoriteOnly = query.get("favoriteOnly") === "true";
     const matchingSearch = store.questions.flatMap((question) => {
       const interview = store.interviews.find((item) => item.id === question.interview_id);
       if (!interview) return [];
@@ -114,13 +116,37 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
         role: interview.role,
         interviewer_type: interview.interviewer_type,
         is_added_to_practice: practiceInterviewId > 0 && store.practiceQuestions.some((selected) => selected.practice_interview_id === practiceInterviewId && selected.source_question_id === question.id),
+        is_favorite: Boolean(question.is_favorite),
+        favorite_answer: question.favorite_answer ?? "",
       };
       return search === "" || [row.question_text, row.company, row.role].some((value) => value.toLowerCase().includes(search)) ? [row] : [];
     });
-    const matchingRows = matchingSearch.filter((question) => type === "all" || question.interviewer_type === type).sort((a, b) => b.id - a.id);
+    const matchingRows = matchingSearch
+      .filter((question) => !favoriteOnly || question.is_favorite)
+      .filter((question) => type === "all" || question.interviewer_type === type)
+      .sort((a, b) => b.id - a.id);
     return Promise.resolve(json({
       items: matchingRows.slice(offset, offset + limit),
       total: matchingRows.length,
+    }));
+  }
+
+  match = path.match(/^\/questions\/(\d+)\/favorite$/);
+  if (match && method === "PATCH") {
+    const questionId = Number(match[1]);
+    const index = store.questions.findIndex((question) => question.id === questionId);
+    if (index < 0) return Promise.resolve(json({ error: "Question not found." }, 404));
+    const input = bodyOf(init);
+    store.questions[index] = {
+      ...store.questions[index],
+      is_favorite: typeof input.is_favorite === "boolean" ? input.is_favorite : Boolean(store.questions[index].is_favorite),
+      favorite_answer: typeof input.favorite_answer === "string" ? input.favorite_answer.trim() : store.questions[index].favorite_answer ?? "",
+    };
+    writeStore(store);
+    return Promise.resolve(json({
+      id: questionId,
+      is_favorite: store.questions[index].is_favorite,
+      favorite_answer: store.questions[index].favorite_answer,
     }));
   }
   if (path === "/practice-interviews" && method === "GET") {
@@ -144,7 +170,7 @@ function browserFetch(url: string, init?: RequestInit): Promise<Response> {
     return Promise.resolve(json(interview, 201));
   }
 
-  let match = path.match(/^\/interviews\/(\d+)$/);
+  match = path.match(/^\/interviews\/(\d+)$/);
   if (match) {
     const id = Number(match[1]);
     const index = store.interviews.findIndex((item) => item.id === id);

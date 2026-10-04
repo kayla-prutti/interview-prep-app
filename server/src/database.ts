@@ -78,6 +78,14 @@ if (!questionColumns.some((column) => column.name === "interviewer_type")) {
   `);
 }
 
+if (!questionColumns.some((column) => column.name === "is_favorite")) {
+  db.exec(`ALTER TABLE questions ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0`);
+}
+
+if (!questionColumns.some((column) => column.name === "favorite_answer")) {
+  db.exec(`ALTER TABLE questions ADD COLUMN favorite_answer TEXT NOT NULL DEFAULT ''`);
+}
+
 db.exec(`
   UPDATE questions
   SET interviewer_type = (

@@ -22,6 +22,7 @@ import { interviewColumns } from "./features/interviews/columns";
 import { InterviewMobileCard } from "./features/interviews/InterviewMobileCard";
 import type { InterviewGridContext } from "./features/interviews/types";
 import { questionColumns } from "./features/questions/columns";
+import { FavoritesPage } from "./features/questions/FavoritesPage";
 import { QuestionMobileCard } from "./features/questions/QuestionMobileCard";
 import type { QuestionGridContext } from "./features/questions/types";
 import { PracticePage } from "./features/practice/PracticePage";
@@ -90,6 +91,15 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [questionPageSize, setQuestionPageSize] = useState(10);
   const [questionSearch, setQuestionSearch] = useState("");
   const [activeQuestionType, setActiveQuestionType] = useState<InterviewFilter>("all");
+  const [favoriteQuestions, setFavoriteQuestions] = useState<Question[]>([]);
+  const [favoriteTotal, setFavoriteTotal] = useState(0);
+  const [favoritePage, setFavoritePage] = useState(0);
+  const [favoritePageSize, setFavoritePageSize] = useState(10);
+  const [favoriteSearch, setFavoriteSearch] = useState("");
+  const [activeFavoriteType, setActiveFavoriteType] = useState<InterviewFilter>("all");
+  const [areFavoritesLoading, setAreFavoritesLoading] = useState(false);
+  const [favoritesError, setFavoritesError] = useState("");
+  const [pendingFavoriteUpdates, setPendingFavoriteUpdates] = useState<Set<number>>(() => new Set());
   const [practiceInterviews, setPracticeInterviews] = useState<PracticeInterview[]>([]);
   const [activePracticeId, setActivePracticeId] = useState<number | null>(null);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
@@ -126,8 +136,10 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const [isDeletingInterview, setIsDeletingInterview] = useState(false);
   const interviewRequest = useRef(0);
   const questionRequest = useRef(0);
+  const favoriteRequest = useRef(0);
   const interviewPageCache = useRef(new PageCache<PagedResult<Interview>>());
   const questionPageCache = useRef(new PageCache<PagedResult<Question>>());
+  const favoritePageCache = useRef(new PageCache<PagedResult<Question>>());
   const practiceOptionsLoaded = useRef(false);
   const practiceSummariesLoaded = useRef(false);
   const practiceOptionsRequest = useRef<Promise<void> | null>(null);
@@ -139,6 +151,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
   const practicePickerRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebouncedValue(search);
   const debouncedQuestionSearch = useDebouncedValue(questionSearch);
+  const debouncedFavoriteSearch = useDebouncedValue(favoriteSearch);
 
   const loadInterviews = useCallback(async () => {
     const requestId = ++interviewRequest.current;
@@ -206,6 +219,38 @@ function App({ accountEmail, onSignOut }: AppProps) {
       if (requestId === questionRequest.current) setAreQuestionsLoading(false);
     }
   }, [activePracticeId, activeQuestionType, debouncedQuestionSearch, questionPage, questionPageSize]);
+
+  const loadFavorites = useCallback(async () => {
+    const requestId = ++favoriteRequest.current;
+    const cacheKey = createPageCacheKey({ page: favoritePage, pageSize: favoritePageSize, search: debouncedFavoriteSearch, type: activeFavoriteType });
+    const cached = favoritePageCache.current.get(cacheKey);
+    if (cached) {
+      setFavoriteQuestions(cached.items);
+      setFavoriteTotal(cached.total);
+      setFavoritesError("");
+      setAreFavoritesLoading(false);
+      return;
+    }
+
+    setAreFavoritesLoading(true);
+    setFavoritesError("");
+    try {
+      const parameters = new URLSearchParams({ offset: String(favoritePage * favoritePageSize), limit: String(favoritePageSize), search: debouncedFavoriteSearch, type: activeFavoriteType, favoriteOnly: "true" });
+      const result = await favoritePageCache.current.load(cacheKey, async () => {
+        const response = await apiFetch(`${API_URL}/questions/page?${parameters}`);
+        if (!response.ok) throw new Error("Could not load favorite questions.");
+        return (await response.json()) as PagedResult<Question>;
+      });
+      if (requestId !== favoriteRequest.current) return;
+      setFavoriteQuestions(result.items);
+      setFavoriteTotal(result.total);
+    } catch (caughtError) {
+      if (requestId !== favoriteRequest.current) return;
+      setFavoritesError(caughtError instanceof Error ? caughtError.message : "Could not load favorite questions.");
+    } finally {
+      if (requestId === favoriteRequest.current) setAreFavoritesLoading(false);
+    }
+  }, [activeFavoriteType, debouncedFavoriteSearch, favoritePage, favoritePageSize]);
 
   const loadPracticeInterviews = useCallback(async (view: "options" | "summary" = "summary") => {
     const requestRef = view === "options" ? practiceOptionsRequest : practiceSummariesRequest;
@@ -309,6 +354,13 @@ function App({ accountEmail, onSignOut }: AppProps) {
     // oxlint-disable-next-line react/set-state-in-effect
     void loadQuestions();
   }, [loadQuestions, page]);
+
+  useEffect(() => {
+    if (page !== "favorites") return;
+    // Favorites use the same paginated question endpoint with a server-side favorite filter.
+    // oxlint-disable-next-line react/set-state-in-effect
+    void loadFavorites();
+  }, [loadFavorites, page]);
 
   const questionRows = form.questions ?? [""];
   const canSaveInterview = form.company.trim() !== ""
@@ -650,6 +702,47 @@ function App({ accountEmail, onSignOut }: AppProps) {
     setPreparationNotes((current) => current.filter((note) => note.id !== noteId));
   }
 
+  async function toggleQuestionFavorite(question: Question) {
+    if (pendingFavoriteUpdates.has(question.id)) return;
+    setPendingFavoriteUpdates((current) => new Set(current).add(question.id));
+    try {
+      const response = await apiFetch(`${API_URL}/questions/${question.id}/favorite`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_favorite: !question.is_favorite }),
+      });
+      const result = (await response.json()) as Pick<Question, "id" | "is_favorite" | "favorite_answer"> | { error: string };
+      if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not update the favorite.");
+      const updateQuestion = (item: Question) => item.id === result.id ? { ...item, ...result } : item;
+      setQuestions((current) => current.map(updateQuestion));
+      setFavoriteQuestions((current) => result.is_favorite ? current.map(updateQuestion) : current.filter((item) => item.id !== result.id));
+      if (!result.is_favorite) setFavoriteTotal((current) => Math.max(0, current - 1));
+      questionPageCache.current.clear();
+      favoritePageCache.current.clear();
+    } finally {
+      setPendingFavoriteUpdates((current) => {
+        const next = new Set(current);
+        next.delete(question.id);
+        return next;
+      });
+    }
+  }
+
+  async function saveFavoriteAnswer(questionId: number, answer: string) {
+    const response = await apiFetch(`${API_URL}/questions/${questionId}/favorite`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ favorite_answer: answer }),
+    });
+    const result = (await response.json()) as Pick<Question, "id" | "is_favorite" | "favorite_answer"> | { error: string };
+    if (!response.ok || "error" in result) throw new Error("error" in result ? result.error : "Could not save the answer.");
+    const updateQuestion = (question: Question) => question.id === result.id ? { ...question, ...result } : question;
+    setQuestions((current) => current.map(updateQuestion));
+    setFavoriteQuestions((current) => current.map(updateQuestion));
+    questionPageCache.current.clear();
+    favoritePageCache.current.clear();
+  }
+
   async function addQuestionToPractice(questionId: number) {
     if (!activePracticeId) return;
     const sourceQuestion = questions.find((question) => question.id === questionId);
@@ -744,8 +837,14 @@ function App({ accountEmail, onSignOut }: AppProps) {
     practiceName: practiceInterviews.find((interview) => interview.id === activePracticeId)?.company,
     isAddedToPractice: (questionId) => practiceSourceQuestionIds.has(questionId),
     isAddingToPractice: (questionId) => activePracticeId !== null && pendingPracticeAdds.has(`${activePracticeId}:${questionId}`),
+    isUpdatingFavorite: (questionId) => pendingFavoriteUpdates.has(questionId),
     onAddToPractice: (questionId) => void addQuestionToPractice(questionId).catch((caughtError) => setQuestionsError(caughtError instanceof Error ? caughtError.message : "Could not add the question.")),
     onChoosePractice: () => void openPracticePicker(),
+    onToggleFavorite: (question) => void toggleQuestionFavorite(question).catch((caughtError) => {
+      const message = caughtError instanceof Error ? caughtError.message : "Could not update the favorite.";
+      if (page === "favorites") setFavoritesError(message);
+      else setQuestionsError(message);
+    }),
   };
 
   const activePracticeInterview = practiceInterviews.find((interview) => interview.id === activePracticeId);
@@ -837,6 +936,26 @@ function App({ accountEmail, onSignOut }: AppProps) {
               </div>
             )}
           </section>
+        ) : page === "favorites" ? (
+          <FavoritesPage
+            accountControl={accountControl}
+            activeType={activeFavoriteType}
+            context={questionGridContext}
+            error={favoritesError}
+            isLoading={areFavoritesLoading}
+            page={favoritePage}
+            pageSize={favoritePageSize}
+            questions={favoriteQuestions}
+            search={favoriteSearch}
+            tabs={interviewTypeTabs}
+            total={favoriteTotal}
+            onPageChange={setFavoritePage}
+            onPageSizeChange={(pageSize) => { setFavoritePageSize(pageSize); setFavoritePage(0); }}
+            onRetry={() => void loadFavorites()}
+            onSaveAnswer={saveFavoriteAnswer}
+            onSearchChange={(value) => { setFavoriteSearch(value); setFavoritePage(0); }}
+            onTypeChange={(value) => { setActiveFavoriteType(value); setFavoritePage(0); }}
+          />
         ) : (
           <PracticePage
             accountControl={accountControl}

@@ -11,10 +11,11 @@ questionsRouter.get("/questions/page", (req, res) => {
   const offset = Math.max(0, Number(req.query.offset) || 0);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
   const practiceInterviewId = Math.max(0, Number(req.query.practiceInterviewId) || 0) || null;
+  const favoriteOnly = req.query.favoriteOnly === "true";
   const searchPattern = `%${search}%`;
-  const where = "(? = 'all' OR interviews.interviewer_type = ?) AND (? = '' OR lower(questions.question_text) LIKE ? OR lower(interviews.company) LIKE ? OR lower(interviews.role) LIKE ?)";
-  const parameters = [type, type, search, searchPattern, searchPattern, searchPattern];
-  const select = `SELECT questions.id, questions.question_text, questions.created_at, interviews.id AS interview_id, interviews.company, interviews.role, interviews.interviewer_type,
+  const where = "(? = 0 OR questions.is_favorite = 1) AND (? = 'all' OR interviews.interviewer_type = ?) AND (? = '' OR lower(questions.question_text) LIKE ? OR lower(interviews.company) LIKE ? OR lower(interviews.role) LIKE ?)";
+  const parameters = [favoriteOnly ? 1 : 0, type, type, search, searchPattern, searchPattern, searchPattern];
+  const select = `SELECT questions.id, questions.question_text, questions.created_at, questions.is_favorite, questions.favorite_answer, interviews.id AS interview_id, interviews.company, interviews.role, interviews.interviewer_type,
     CASE WHEN ? IS NULL THEN 0 ELSE EXISTS (
       SELECT 1 FROM practice_questions
       WHERE practice_questions.practice_interview_id = ?
@@ -54,6 +55,17 @@ questionsRouter.put("/questions/:questionId", (req, res) => {
   const result = db.prepare("UPDATE questions SET question_text = ? WHERE id = ?").run(input.value, questionId);
   if (result.changes === 0) { res.status(404).json({ error: "Question not found." }); return; }
   res.json(db.prepare("SELECT * FROM questions WHERE id = ?").get(questionId));
+});
+
+questionsRouter.patch("/questions/:questionId/favorite", (req, res) => {
+  const questionId = positiveId(req.params.questionId);
+  if (!questionId) { res.status(400).json({ error: "Question ID must be a positive number." }); return; }
+  const current = db.prepare("SELECT * FROM questions WHERE id = ?").get(questionId) as { is_favorite: number; favorite_answer: string } | undefined;
+  if (!current) { res.status(404).json({ error: "Question not found." }); return; }
+  const isFavorite = typeof req.body?.is_favorite === "boolean" ? Number(req.body.is_favorite) : current.is_favorite;
+  const favoriteAnswer = typeof req.body?.favorite_answer === "string" ? req.body.favorite_answer.trim() : current.favorite_answer;
+  db.prepare("UPDATE questions SET is_favorite = ?, favorite_answer = ? WHERE id = ?").run(isFavorite, favoriteAnswer, questionId);
+  res.json(db.prepare("SELECT id, is_favorite, favorite_answer FROM questions WHERE id = ?").get(questionId));
 });
 
 questionsRouter.delete("/questions/:questionId", (req, res) => {

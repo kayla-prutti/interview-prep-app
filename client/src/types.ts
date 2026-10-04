@@ -1,6 +1,6 @@
 export type InterviewerType = "recruiter" | "hiring_manager" | "technical";
 export type InterviewFilter = "all" | InterviewerType;
-export type Page = "interviews" | "questions" | "practice";
+export type Page = "interviews" | "questions" | "favorites" | "practice";
 
 export type Interview = {
   id: number;
@@ -21,6 +21,8 @@ export type Question = {
   role?: string;
   interviewer_type?: InterviewerType;
   is_added_to_practice?: boolean;
+  is_favorite?: boolean;
+  favorite_answer?: string;
 };
 
 export type InterviewForm = {

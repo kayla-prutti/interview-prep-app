@@ -22,6 +22,10 @@ export function QuestionIcon() {
   return <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18"><path d="M5 4.5h11A2.5 2.5 0 0 1 18.5 7v12H7.5A2.5 2.5 0 0 0 5 21.5v-17Zm3 4h7m-7 4h7m-7 4h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"/></svg>;
 }
 
+export function StarIcon({ filled = false }: { filled?: boolean }) {
+  return <svg aria-hidden="true" fill={filled ? "currentColor" : "none"} height="18" viewBox="0 0 24 24" width="18"><path d="m12 3 2.7 5.47 6.03.88-4.36 4.25 1.03 6-5.4-2.84-5.4 2.84 1.03-6-4.36-4.25 6.03-.88L12 3Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"/></svg>;
+}
+
 export function PracticeIcon() {
   return <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18"><path d="M8 5h8m-9 4h10m-9 4h8m-9 4h10M5 3v18m14-18v18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></svg>;
 }

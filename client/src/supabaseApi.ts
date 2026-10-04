@@ -63,6 +63,7 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     const offset = Math.max(0, Number(query.get("offset")) || 0);
     const limit = Math.min(50, Math.max(1, Number(query.get("limit")) || 10));
     const practiceInterviewId = Math.max(0, Number(query.get("practiceInterviewId")) || 0);
+    const favoriteOnly = query.get("favoriteOnly") === "true";
     let matchingQuestionIds: number[] | null = null;
 
     if (search) {
@@ -84,11 +85,12 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
     }
 
     const pageSelection = practiceInterviewId
-      ? "id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type), practice_questions(practice_interview_id)"
-      : "id, question_text, created_at, interview_id, interviews!inner(company, role, interviewer_type)";
+      ? "id, question_text, created_at, interview_id, is_favorite, favorite_answer, interviews!inner(company, role, interviewer_type), practice_questions(practice_interview_id)"
+      : "id, question_text, created_at, interview_id, is_favorite, favorite_answer, interviews!inner(company, role, interviewer_type)";
     let pageQuery = supabase.from("questions").select(pageSelection, { count: "exact" });
     if (matchingQuestionIds) pageQuery = pageQuery.in("id", matchingQuestionIds);
     if (type !== "all") pageQuery = pageQuery.eq("interviews.interviewer_type", type);
+    if (favoriteOnly) pageQuery = pageQuery.eq("is_favorite", true);
     if (practiceInterviewId) pageQuery = pageQuery.eq("practice_questions.practice_interview_id", practiceInterviewId);
 
     try {
@@ -99,13 +101,15 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
         question_text: string;
         created_at: string;
         interview_id: number;
+        is_favorite: boolean;
+        favorite_answer: string;
         interviews: { company: string; role: string; interviewer_type: Question["interviewer_type"] };
         practice_questions?: { practice_interview_id: number }[];
       }>;
       const items = rows.map((row) => {
         const interview = row.interviews as unknown as { company: string; role: string; interviewer_type: Question["interviewer_type"] };
         const selected = row.practice_questions ?? [];
-        return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type, is_added_to_practice: selected.length > 0 };
+        return { id: row.id, question_text: row.question_text, created_at: row.created_at, interview_id: row.interview_id, company: interview.company, role: interview.role, interviewer_type: interview.interviewer_type, is_added_to_practice: selected.length > 0, is_favorite: row.is_favorite, favorite_answer: row.favorite_answer };
       });
       return json({ items, total: pageResult.count ?? 0 });
     } catch (caughtError) {
@@ -184,6 +188,18 @@ export async function supabaseFetch(path: string, init?: RequestInit): Promise<R
       const { data, error } = await supabase.from("questions").insert({ interview_id: interviewId, question_text: bodyOf(init).question_text }).select("id, interview_id, question_text, created_at").single();
       return error ? failure(error.message, errorStatus(error.code)) : json(data, 201);
     }
+  }
+
+  match = routePath.match(/^\/questions\/(\d+)\/favorite$/);
+  if (match && method === "PATCH") {
+    const questionId = Number(match[1]);
+    const input = bodyOf(init);
+    const updates: { is_favorite?: boolean; favorite_answer?: string } = {};
+    if (typeof input.is_favorite === "boolean") updates.is_favorite = input.is_favorite;
+    if (typeof input.favorite_answer === "string") updates.favorite_answer = input.favorite_answer.trim();
+    if (Object.keys(updates).length === 0) return failure("No favorite changes were provided.", 400);
+    const { data, error } = await supabase.from("questions").update(updates).eq("id", questionId).select("id, is_favorite, favorite_answer").single();
+    return error ? failure(error.message, errorStatus(error.code)) : json(data);
   }
 
   match = routePath.match(/^\/questions\/(\d+)$/);

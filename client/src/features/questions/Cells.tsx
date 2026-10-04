@@ -1,5 +1,5 @@
 import type { CustomCellRendererProps } from "ag-grid-react";
-import { AddedIcon, AddPracticeIcon } from "../../components/Icons";
+import { AddedIcon, AddPracticeIcon, StarIcon } from "../../components/Icons";
 import type { Question } from "../../types";
 import type { QuestionGridContext } from "./types";
 
@@ -7,6 +7,22 @@ export function QuestionPracticeCell({ context, data }: CustomCellRendererProps<
   if (!data) return null;
   const actions = context as QuestionGridContext;
   return <div className="flex h-full items-center"><QuestionPracticeButton actions={actions} question={data} /></div>;
+}
+
+export function QuestionFavoriteCell({ context, data }: CustomCellRendererProps<Question>) {
+  if (!data) return null;
+  return <div className="flex h-full items-center justify-center"><QuestionFavoriteButton actions={context as QuestionGridContext} question={data} /></div>;
+}
+
+export function QuestionFavoriteButton({ actions, question }: { actions: QuestionGridContext; question: Question }) {
+  const isFavorite = Boolean(question.is_favorite);
+  const isUpdating = actions.isUpdatingFavorite(question.id);
+  const label = isFavorite ? "Remove from favorites" : "Add to favorites";
+  return (
+    <button aria-label={label} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors ${isFavorite ? "text-[#C95712] hover:bg-[#FFE4D1]" : "text-[#868686] hover:bg-[#FFF3E9] hover:text-[#C95712]"} ${isUpdating ? "cursor-wait opacity-50" : "cursor-pointer"}`} disabled={isUpdating} title={label} type="button" onClick={() => actions.onToggleFavorite(question)}>
+      <StarIcon filled={isFavorite} />
+    </button>
+  );
 }
 
 export function QuestionPracticeButton({ actions, question }: { actions: QuestionGridContext; question: Question }) {
