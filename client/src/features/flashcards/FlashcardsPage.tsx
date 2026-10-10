@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import { FlashcardEditor } from "./FlashcardEditor";
+import { FlashcardSetEditor } from "./FlashcardSetEditor";
 import { emptyChanges, loadChanges, saveChanges, studyDecks, type StudyCard } from "./storage";
 
 type FlashcardsPageProps = { accountControl?: ReactNode; accountId?: string };
@@ -34,6 +35,21 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
   const menuRef = useRef<HTMLDivElement>(null);
   const [editor, setEditor] = useState<{ card?: StudyCard } | null>(null);
   const [message, setMessage] = useState("");
+  const [isSetEditorOpen, setIsSetEditorOpen] = useState(false);
+
+  function createSet(title: string, description: string) {
+    if (loaded.error) throw new Error(loaded.error);
+    if (flashcardDecks.some((set) => set.title.toLocaleLowerCase() === title.toLocaleLowerCase())) {
+      throw new Error("A set with this name already exists. Choose another name.");
+    }
+    const set = { id: `set:${crypto.randomUUID()}`, title, description };
+    const next = { ...changes, sets: [...changes.sets, set] };
+    saveChanges(accountId, next);
+    setChanges(next);
+    setDeckId(set.id);
+    reset([]);
+    setMessage("Flashcard set created. Add your first card to start studying.");
+  }
 
   function save(targetDeckId: string, front: string, back: string) {
     if (loaded.error) throw new Error(loaded.error);
@@ -61,7 +77,7 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
 
   const card = cards[index];
   const go = (next: number) => {
-    setIndex(Math.min(cards.length - 1, Math.max(0, next)));
+    setIndex(Math.max(0, Math.min(cards.length - 1, next)));
     setIsFlipped(false);
   };
   const reset = (nextCards: typeof cards) => {
@@ -90,7 +106,7 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (editor || event.defaultPrevented) return;
+      if (editor || isSetEditorOpen || !card || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
@@ -117,9 +133,14 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
     >
       <PageHeader
         accountControl={accountControl}
-        action={<button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setEditor({}); setMessage(""); }}>+ Create flashcard</button>}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button className="flex-1 whitespace-nowrap rounded-md border border-[#BDBDB8] bg-white px-4 py-2.5 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setIsSetEditorOpen(true); setMessage(""); }}>+ Create set</button>
+            <button className="flex-1 whitespace-nowrap rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setEditor({}); setMessage(""); }}>+ Add flashcard</button>
+          </div>
+        }
         description="Flip through short cards to drill the concepts interviewers ask about most."
-        eyebrow="Study deck"
+        eyebrow="Study sets"
         title="Flashcards"
       />
       {loaded.error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{loaded.error}</p>}
@@ -129,13 +150,13 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
           className="text-sm font-semibold text-[#4A4A4A]"
           htmlFor="flashcard-deck"
         >
-          Deck
+          Set
         </label>
         <div className="relative min-w-0 flex-1 sm:flex-none" ref={menuRef}>
           <button
             aria-expanded={isMenuOpen}
             aria-haspopup="listbox"
-            className="flex w-full items-center justify-between gap-3 rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-left text-sm font-semibold sm:min-w-56"
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-left text-sm font-semibold sm:min-w-56 sm:max-w-80"
             id="flashcard-deck"
             type="button"
             onClick={() => setIsMenuOpen((value) => !value)}
@@ -180,14 +201,16 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
           )}
         </div>
         <button
-          className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] sm:ml-auto"
+          className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40 sm:ml-auto"
+          disabled={cards.length < 2}
           type="button"
           onClick={() => reset(shuffle(deck.cards))}
         >
           Shuffle
         </button>
         <button
-          className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2]"
+          className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40"
+          disabled={cards.length < 2}
           type="button"
           onClick={() => reset(deck.cards)}
         >
@@ -196,10 +219,11 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
       </div>
       <p className="mx-auto mt-3 w-full max-w-2xl text-sm text-[#686868]">
         {deck.description}
-        <span className="mt-1 block text-xs">Your created cards and edits are saved in this browser for your account.</span>
+        <span className="mt-1 block text-xs">Your sets, cards, and edits are saved in this browser for your account.</span>
       </p>
 
       <div className="mt-6 flex flex-1 flex-col items-center md:min-h-0 md:justify-center">
+        {card ? <>
         <div className="mb-3 flex w-full max-w-2xl items-center justify-between gap-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C95712]">Card {index + 1} of {cards.length}</p>
           <button className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setEditor({ card }); setMessage(""); }}>Edit flashcard</button>
@@ -244,7 +268,15 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
             Next →
           </button>
         </div>
+        </> : <div className="grid min-h-[260px] w-full max-w-2xl place-items-center rounded-xl border border-dashed border-[#BDBDB8] bg-white p-8 text-center">
+          <div>
+            <h2 className="text-xl font-bold text-[#202020]">Your set is ready</h2>
+            <p className="mt-2 text-sm leading-6 text-[#686868]">Add your first flashcard to {deck.title}.</p>
+            <button className="mt-5 rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => setEditor({})}>+ Add first flashcard</button>
+          </div>
+        </div>}
       </div>
+      {isSetEditorOpen && <FlashcardSetEditor onClose={() => setIsSetEditorOpen(false)} onSave={createSet} />}
       {editor && <FlashcardEditor card={editor.card} deckId={deckId} decks={flashcardDecks} onClose={() => setEditor(null)} onSave={save} />}
     </section>
   );

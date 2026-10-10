@@ -54,7 +54,7 @@ server/src/
 
 ## Personal flashcards
 
-Use **Create flashcard** to add a question and answer to a study deck, or **Edit flashcard** to personalize the current card. These changes are saved in this browser under the signed-in account. They persist after refresh and remain separate between accounts, but do not sync across devices. Clearing browser site data removes personal flashcard changes. Built-in decks remain available.
+Use **Create set** to make a named group with an optional description. Select a set and use **Add flashcard** to add questions and answers to it, or **Edit flashcard** to personalize the current card. Empty sets offer an **Add first flashcard** button. Your sets, cards, and edits are saved in this browser under the signed-in account. They persist after refresh and remain separate between accounts, but do not sync across devices. Clearing browser site data removes personal flashcard changes. Built-in decks remain available.
 
 ## Run locally
 

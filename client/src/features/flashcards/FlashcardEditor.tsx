@@ -49,7 +49,7 @@ export function FlashcardEditor({ card, deckId, decks, onClose, onSave }: Flashc
         </header>
         {error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
         <div className="mt-5 grid gap-4">
-          <label className="grid gap-2 text-sm font-bold">Deck
+          <label className="grid gap-2 text-sm font-bold">Set
             <select className={fieldClass} disabled={Boolean(card)} value={selectedDeck} onChange={(event) => setSelectedDeck(event.target.value)}>
               {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.title}</option>)}
             </select>
