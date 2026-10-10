@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase, usesSupabase } from "../supabase";
 import { PasswordField } from "./PasswordField";
 
 type AuthRootProps = {
-  children: (account: { email: string; signOut: () => Promise<void> } | null) => ReactNode;
+  children: (account: { id: string; email: string; signOut: () => Promise<void> } | null) => ReactNode;
 };
 
 export function AuthRoot({ children }: AuthRootProps) {
@@ -96,6 +96,7 @@ export function AuthRoot({ children }: AuthRootProps) {
   }
 
   return children({
+    id: session.user.id,
     email: session.user.email ?? "Account",
     signOut: async () => {
       const { error: signOutError } = await authClient.auth.signOut();

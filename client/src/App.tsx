@@ -60,6 +60,7 @@ function sortPreparationNotesByModifiedDate(notes: PreparationNote[]) {
 }
 
 type AppProps = {
+  accountId?: string;
   accountEmail?: string;
   onSignOut?: () => Promise<void>;
 };
@@ -76,7 +77,7 @@ const interviewTypeTabs: FolderTab<InterviewFilter>[] = interviewFilterSections.
   label: section.title,
 }));
 
-function App({ accountEmail, onSignOut }: AppProps) {
+function App({ accountId, accountEmail, onSignOut }: AppProps) {
   const [isGuideOpen, setIsGuideOpen] = useState(() => localStorage.getItem("i-prep-guide-seen-v1") !== "true");
   const [page, setPage] = useState<Page>("interviews");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -958,7 +959,7 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onTypeChange={(value) => { setActiveFavoriteType(value); setFavoritePage(0); }}
           />
         ) : page === "flashcards" ? (
-          <FlashcardsPage accountControl={accountControl} />
+          <FlashcardsPage key={accountId ?? "local"} accountId={accountId} accountControl={accountControl} />
         ) : (
           <PracticePage
             accountControl={accountControl}

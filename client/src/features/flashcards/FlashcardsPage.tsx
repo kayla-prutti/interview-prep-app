@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PageHeader } from "../../components/PageHeader";
-import { flashcardDecks } from "./decks";
+import { FlashcardEditor } from "./FlashcardEditor";
+import { emptyChanges, loadChanges, saveChanges, studyDecks, type StudyCard } from "./storage";
 
-type FlashcardsPageProps = { accountControl?: ReactNode };
+type FlashcardsPageProps = { accountControl?: ReactNode; accountId?: string };
 
 function shuffle<T>(items: T[]) {
   const copy = [...items];
@@ -13,7 +14,16 @@ function shuffle<T>(items: T[]) {
   return copy;
 }
 
-export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
+export function FlashcardsPage({ accountControl, accountId = "local" }: FlashcardsPageProps) {
+  const [loaded] = useState(() => {
+    try {
+      return { changes: loadChanges(accountId), error: "" };
+    } catch (caught) {
+      return { changes: emptyChanges(), error: caught instanceof Error ? caught.message : "Could not load your saved flashcards." };
+    }
+  });
+  const [changes, setChanges] = useState(loaded.changes);
+  const flashcardDecks = studyDecks(changes);
   const [deckId, setDeckId] = useState(flashcardDecks[0].id);
   const deck =
     flashcardDecks.find((item) => item.id === deckId) ?? flashcardDecks[0];
@@ -22,6 +32,32 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [editor, setEditor] = useState<{ card?: StudyCard } | null>(null);
+  const [message, setMessage] = useState("");
+
+  function save(targetDeckId: string, front: string, back: string) {
+    if (loaded.error) throw new Error(loaded.error);
+    const existing = editor?.card;
+    const id = existing?.id ?? crypto.randomUUID();
+    const updated = { id, front, back };
+    const next = existing
+      ? changes.created.some((item) => item.id === id)
+        ? { ...changes, created: changes.created.map((item) => item.id === id ? { ...item, front, back } : item) }
+        : { ...changes, edits: { ...changes.edits, [id]: { front, back } } }
+      : { ...changes, created: [...changes.created, { ...updated, deckId: targetDeckId }] };
+    saveChanges(accountId, next);
+    setChanges(next);
+    if (existing) {
+      setCards((items) => items.map((item) => item.id === id ? updated : item));
+    } else {
+      const targetCards = studyDecks(next).find((item) => item.id === targetDeckId)!.cards;
+      setDeckId(targetDeckId);
+      setCards(targetDeckId === deckId ? [...cards, updated] : targetCards);
+      setIndex(targetCards.length - 1);
+    }
+    setIsFlipped(false);
+    setMessage(existing ? "Flashcard updated." : "Flashcard created.");
+  }
 
   const card = cards[index];
   const go = (next: number) => {
@@ -54,6 +90,7 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (editor || event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
@@ -80,10 +117,13 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
     >
       <PageHeader
         accountControl={accountControl}
+        action={<button className="rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setEditor({}); setMessage(""); }}>+ Create flashcard</button>}
         description="Flip through short cards to drill the concepts interviewers ask about most."
         eyebrow="Study deck"
         title="Flashcards"
       />
+      {loaded.error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{loaded.error}</p>}
+      <p className="sr-only" role="status">{message}</p>
       <div className="mx-auto mt-7 flex w-full max-w-2xl flex-wrap items-center gap-3 md:mt-5">
         <label
           className="text-sm font-semibold text-[#4A4A4A]"
@@ -126,6 +166,7 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
                     className={`w-full px-3 py-2 text-left text-sm hover:bg-[#FFF8F2] ${item.id === deck.id ? "font-bold text-[#C95712]" : "font-semibold"}`}
                     type="button"
                     onClick={() => {
+                      setMessage("");
                       setDeckId(item.id);
                       reset(item.cards);
                       setIsMenuOpen(false);
@@ -155,12 +196,14 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
       </div>
       <p className="mx-auto mt-3 w-full max-w-2xl text-sm text-[#686868]">
         {deck.description}
+        <span className="mt-1 block text-xs">Your created cards and edits are saved in this browser for your account.</span>
       </p>
 
       <div className="mt-6 flex flex-1 flex-col items-center md:min-h-0 md:justify-center">
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#C95712]">
-          Card {index + 1} of {cards.length}
-        </p>
+        <div className="mb-3 flex w-full max-w-2xl items-center justify-between gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C95712]">Card {index + 1} of {cards.length}</p>
+          <button className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setEditor({ card }); setMessage(""); }}>Edit flashcard</button>
+        </div>
         <button
           aria-label={isFlipped ? "Show question" : "Show answer"}
           className="grid min-h-[260px] w-full max-w-2xl place-items-center rounded-xl border border-[#BDBDB8] bg-white p-6 text-center shadow-[0_14px_34px_rgba(32,32,32,0.08)] transition-colors hover:bg-[#FFF8F2] sm:min-h-[300px] sm:p-10"
@@ -174,7 +217,7 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
               {isFlipped ? "Answer" : "Question"}
             </span>
             <span
-              className={`block leading-8 text-[#202020] ${isFlipped ? "text-base" : "text-xl font-bold"}`}
+              className={`block whitespace-pre-wrap break-words leading-8 text-[#202020] ${isFlipped ? "text-base" : "text-xl font-bold"}`}
             >
               {isFlipped ? card.back : card.front}
             </span>
@@ -202,6 +245,7 @@ export function FlashcardsPage({ accountControl }: FlashcardsPageProps) {
           </button>
         </div>
       </div>
+      {editor && <FlashcardEditor card={editor.card} deckId={deckId} decks={flashcardDecks} onClose={() => setEditor(null)} onSave={save} />}
     </section>
   );
 }

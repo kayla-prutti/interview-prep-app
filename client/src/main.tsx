@@ -6,6 +6,6 @@ import { AuthRoot } from './components/AuthRoot.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthRoot>{(account) => <App accountEmail={account?.email} onSignOut={account?.signOut} />}</AuthRoot>
+    <AuthRoot>{(account) => <App key={account?.id ?? "local"} accountId={account?.id} accountEmail={account?.email} onSignOut={account?.signOut} />}</AuthRoot>
   </StrictMode>,
 )

@@ -52,6 +52,10 @@ server/src/
   server.ts              Server startup only
 ```
 
+## Personal flashcards
+
+Use **Create flashcard** to add a question and answer to a study deck, or **Edit flashcard** to personalize the current card. These changes are saved in this browser under the signed-in account. They persist after refresh and remain separate between accounts, but do not sync across devices. Clearing browser site data removes personal flashcard changes. Built-in decks remain available.
+
 ## Run locally
 
 Start the server from the project root:
