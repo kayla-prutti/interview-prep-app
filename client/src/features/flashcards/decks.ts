@@ -93,6 +93,42 @@ export const flashcardDecks: FlashcardDeck[] = [
         back: "It returns a deferred copy of a value that lags behind during urgent updates, letting expensive renders (like filtering a big list) happen at lower priority.",
       },
       {
+        front: "How do async functions work in React components?",
+        back: "Use async functions in event handlers or define and call one inside an effect. Do not make the useEffect callback itself async because an effect may only return undefined or a cleanup function, not a Promise.",
+      },
+      {
+        front: "What is a Promise, and how do you handle one?",
+        back: "A Promise represents a future result and can be pending, fulfilled, or rejected. Handle it with await inside an async function or with .then() and .catch(), and use try/catch with await for failures.",
+      },
+      {
+        front: "What should you check when fetching data with fetch?",
+        back: "fetch only rejects for network failures, so check response.ok before parsing response.json(). Handle cancellation and stale responses, and never update state after the request is no longer relevant.",
+      },
+      {
+        front: "How should loading and error states be modeled?",
+        back: "Track the request states explicitly: loading, success data, and error. Clear stale errors when retrying, set loading before the request, and finish in finally or in every success and failure path.",
+      },
+      {
+        front: "What is a controlled input?",
+        back: "An input whose value comes from React state and whose onChange handler updates that state. React becomes the source of truth, which makes validation, formatting, and form submission predictable.",
+      },
+      {
+        front: "What belongs in component state?",
+        back: "Store values that change over time and affect rendering. Avoid storing values that can be derived from props or other state; calculate those during render or memoize only when the calculation is expensive.",
+      },
+      {
+        front: "How should React event handlers be passed?",
+        back: "Pass a function such as onClick={handleClick} or onClick={() => handleClick(id)}. Calling it during render, like onClick={handleClick()}, runs immediately instead of waiting for the event.",
+      },
+      {
+        front: "How do you render lists correctly in React?",
+        back: "Use array.map() to return elements and give each sibling a stable, unique key from the data. Keys help React match items across inserts, removals, and reordering; avoid array indexes when order can change.",
+      },
+      {
+        front: "What are common ways to render UI conditionally?",
+        back: "Use an early return, a ternary for either/or output, && for optional output, or assign JSX to a variable. Choose the clearest form and keep complex conditions outside the JSX.",
+      },
+      {
         front: "How do you fetch data safely in useEffect?",
         back: "Track an ignore flag or AbortController in the effect and cancel it in cleanup, so a slow earlier response cannot overwrite a newer one. Often a data library (React Query, SWR) is preferable.",
       },
