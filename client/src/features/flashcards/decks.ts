@@ -134,4 +134,52 @@ export const flashcardDecks: FlashcardDeck[] = [
       },
     ],
   },
+  {
+    id: "product-mind",
+    title: "Product Mind",
+    description:
+      "Practice product judgment, collaboration, prioritization, and reliability questions.",
+    cards: [
+      {
+        front: "Tell me about a feature you owned end-to-end.",
+        back: "I worked on a data-heavy media planning application. One feature I’m proud of connected an AG Grid table with a D3 visualization. I worked with Product and Design to understand the requirements, built the feature, tested it with QA, and supported the release. It helped users explore and update complex data more easily.",
+      },
+      {
+        front: "What do you do when requirements are unclear?",
+        back: "I start by understanding the user problem and expected outcome. Then I work with Product and Design to clarify requirements. Sometimes I build a quick prototype to help everyone visualize the solution before implementation.",
+      },
+      {
+        front: "Tell me about a time you disagreed with Product or Design.",
+        back: "When I see a technical limitation or a better approach, I explain the trade-offs to Product and Design. I try to suggest alternatives that still solve the user problem. My goal is to find the best solution together, not just push my own idea.",
+      },
+      {
+        front: "How do you decide what to cut when a deadline is approaching?",
+        back: "I focus on the core functionality users need. I discuss trade-offs with Product and suggest moving lower-priority features or small UI improvements to a later release. I never compromise on critical functionality or quality.",
+      },
+      {
+        front: "How do you know whether a feature was successful?",
+        back: "I check whether it solves the original user problem and meets the acceptance criteria. I also look at QA results and user feedback. If possible, I measure whether it improves the user’s workflow or reduces manual work.",
+      },
+      {
+        front: "Tell me about a time you found an edge case Product had not considered.",
+        back: "During implementation, I sometimes found edge cases that weren’t covered in the original requirements, especially when working with complex data. I brought them up early with Product and Design, explained the impact, and worked together to adjust the requirements.",
+      },
+      {
+        front: "What would you do if Product wants something that is technically risky?",
+        back: "I would explain the risk in simple terms, including how it could affect users or system reliability. Then I’d suggest a safer alternative or a smaller first version that still delivers value.",
+      },
+      {
+        front: "How do you prioritize user experience versus engineering complexity?",
+        back: "I start with the user problem. I prefer the simplest solution that provides a good user experience and is easy to maintain. If something adds a lot of complexity without much user value, I discuss a simpler approach with Product.",
+      },
+      {
+        front: "How do you work with Design and QA?",
+        back: "I collaborate with Design early to understand the expected behavior and identify technical limitations. During development, I communicate any issues or edge cases. I work with QA to verify functionality and fix problems before release.",
+      },
+      {
+        front: "How would you approach a healthcare feature where reliability matters?",
+        back: "I would first understand the user workflow and identify critical requirements. I’d focus on data accuracy, privacy, error handling, and clear feedback to users. I would also test edge cases carefully because mistakes in healthcare can directly affect patients.",
+      },
+    ],
+  },
 ];
