@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PageHeader } from "../../components/PageHeader";
+import { PenIcon, PlusIcon } from "../../components/Icons";
 import { FlashcardEditor } from "./FlashcardEditor";
 import { FlashcardSetEditor } from "./FlashcardSetEditor";
 import { emptyChanges, loadChanges, saveChanges, studyDecks, type StudyCard } from "./storage";
@@ -136,7 +137,6 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
         action={
           <div className="flex flex-wrap gap-2">
             <button className="flex-1 whitespace-nowrap rounded-md border border-[#BDBDB8] bg-white px-4 py-2.5 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setIsSetEditorOpen(true); setMessage(""); }}>+ Create set</button>
-            <button className="flex-1 whitespace-nowrap rounded-md bg-[#F5822A] px-4 py-2.5 text-sm font-bold text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setIsMenuOpen(false); setEditor({}); setMessage(""); }}>+ Add flashcard</button>
           </div>
         }
         description="Flip through short cards to drill the concepts interviewers ask about most."
@@ -226,7 +226,10 @@ export function FlashcardsPage({ accountControl, accountId = "local" }: Flashcar
         {card ? <>
         <div className="mb-3 flex w-full max-w-2xl items-center justify-between gap-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C95712]">Card {index + 1} of {cards.length}</p>
-          <button className="rounded-md border border-[#BDBDB8] bg-white px-3 py-2 text-sm font-bold hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} type="button" onClick={() => { setEditor({ card }); setMessage(""); }}>Edit flashcard</button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button aria-label="Add flashcard" className="grid h-10 w-10 place-items-center rounded-md bg-[#F5822A] text-[#202020] hover:bg-[#C95712] hover:text-white disabled:opacity-40" disabled={Boolean(loaded.error)} title="Add flashcard" type="button" onClick={() => { setIsMenuOpen(false); setEditor({}); setMessage(""); }}><PlusIcon /></button>
+            <button aria-label="Edit flashcard" className="grid h-10 w-10 place-items-center rounded-md border border-[#BDBDB8] bg-white text-[#202020] hover:bg-[#FFF8F2] disabled:opacity-40" disabled={Boolean(loaded.error)} title="Edit flashcard" type="button" onClick={() => { setEditor({ card }); setMessage(""); }}><PenIcon /></button>
+          </div>
         </div>
         <button
           aria-label={isFlipped ? "Show question" : "Show answer"}
