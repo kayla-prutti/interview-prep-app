@@ -12,7 +12,7 @@ type FlashcardEditorProps = {
 
 export function FlashcardEditor({ card, deckId, decks, onClose, onSave }: FlashcardEditorProps) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [selectedDeck, setSelectedDeck] = useState(deckId);
+  const deckTitle = decks.find((deck) => deck.id === deckId)?.title ?? "";
   const [front, setFront] = useState(card?.front ?? "");
   const [back, setBack] = useState(card?.back ?? "");
   const [error, setError] = useState("");
@@ -32,7 +32,7 @@ export function FlashcardEditor({ card, deckId, decks, onClose, onSave }: Flashc
       return;
     }
     try {
-      onSave(selectedDeck, front.trim(), back.trim());
+      onSave(deckId, front.trim(), back.trim());
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save the flashcard.");
@@ -50,9 +50,7 @@ export function FlashcardEditor({ card, deckId, decks, onClose, onSave }: Flashc
         {error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
         <div className="mt-5 grid gap-4">
           <label className="grid gap-2 text-sm font-bold">Set
-            <select className={fieldClass} disabled={Boolean(card)} value={selectedDeck} onChange={(event) => setSelectedDeck(event.target.value)}>
-              {decks.map((deck) => <option key={deck.id} value={deck.id}>{deck.title}</option>)}
-            </select>
+            <input className={`${fieldClass} bg-[#F4F4F2] text-[#686868]`} readOnly value={deckTitle} />
           </label>
           <label className="grid gap-2 text-sm font-bold"><RequiredLabel>Question</RequiredLabel>
             <textarea autoFocus className={`${fieldClass} min-h-24 resize-y`} required value={front} onChange={(event) => setFront(event.target.value)} />
