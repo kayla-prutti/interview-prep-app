@@ -1,6 +1,6 @@
 export type InterviewerType = "recruiter" | "hiring_manager" | "technical";
 export type InterviewFilter = "all" | InterviewerType;
-export type Page = "interviews" | "questions" | "favorites" | "practice";
+export type Page = "interviews" | "questions" | "favorites" | "flashcards" | "practice";
 
 export type Interview = {
   id: number;

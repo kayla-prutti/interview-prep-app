@@ -45,3 +45,7 @@ export function SearchIcon() {
 export function CollapseIcon({ collapsed }: { collapsed: boolean }) {
   return <svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16"><path d={collapsed ? "m9 6 6 6-6 6" : "m15 6-6 6 6 6"} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>;
 }
+
+export function FlashcardIcon() {
+  return <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 24 24" width="18"><rect height="12" rx="2" stroke="currentColor" strokeWidth="1.8" width="16" x="6" y="8"/><path d="M4 16V6a2 2 0 0 1 2-2h10M10 14h8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8"/></svg>;
+}

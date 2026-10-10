@@ -22,6 +22,7 @@ import { interviewColumns } from "./features/interviews/columns";
 import { InterviewMobileCard } from "./features/interviews/InterviewMobileCard";
 import type { InterviewGridContext } from "./features/interviews/types";
 import { questionColumns } from "./features/questions/columns";
+import { FlashcardsPage } from "./features/flashcards/FlashcardsPage";
 import { FavoritesPage } from "./features/questions/FavoritesPage";
 import { QuestionMobileCard } from "./features/questions/QuestionMobileCard";
 import type { QuestionGridContext } from "./features/questions/types";
@@ -956,6 +957,8 @@ function App({ accountEmail, onSignOut }: AppProps) {
             onSearchChange={(value) => { setFavoriteSearch(value); setFavoritePage(0); }}
             onTypeChange={(value) => { setActiveFavoriteType(value); setFavoritePage(0); }}
           />
+        ) : page === "flashcards" ? (
+          <FlashcardsPage accountControl={accountControl} />
         ) : (
           <PracticePage
             accountControl={accountControl}

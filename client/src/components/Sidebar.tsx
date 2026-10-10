@@ -1,5 +1,5 @@
 import type { Page } from "../types";
-import { ArchiveIcon, BookIcon, CollapseIcon, PracticeIcon, QuestionIcon, StarIcon } from "./Icons";
+import { ArchiveIcon, BookIcon, CollapseIcon, FlashcardIcon, PracticeIcon, QuestionIcon, StarIcon } from "./Icons";
 
 type SidebarProps = {
   activePage: Page;
@@ -27,10 +27,11 @@ export function Sidebar({ activePage, collapsed, practiceCount, onCollapseChange
 
       <button aria-label="How it works" className="grid h-10 w-10 place-items-center rounded-full border border-white/30 text-sm font-bold text-[#F4F4F2] md:hidden" title="How it works" type="button" onClick={onShowGuide}>?</button>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 gap-1 border-t border-[#686A6B] bg-[#3D3F40]/95 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(32,32,32,0.18)] backdrop-blur-md md:static md:mt-10 md:grid-cols-1 md:gap-2 md:border-0 md:bg-transparent md:p-0 md:shadow-none" aria-label="Main navigation">
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 gap-1 border-t border-[#686A6B] bg-[#3D3F40]/95 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(32,32,32,0.18)] backdrop-blur-md md:static md:mt-10 md:grid-cols-1 md:gap-2 md:border-0 md:bg-transparent md:p-0 md:shadow-none" aria-label="Main navigation">
         <button aria-label="Interviews" className={itemClass("interviews")} title={collapsed ? "Interviews" : undefined} type="button" onClick={() => onPageChange("interviews")}><ArchiveIcon /><span className={collapsed ? "md:hidden" : ""}>Interviews</span></button>
         <button aria-label="Question library" className={itemClass("questions")} title={collapsed ? "Question library" : undefined} type="button" onClick={() => onPageChange("questions")}><QuestionIcon /><span className={collapsed ? "md:hidden" : ""}><span className="md:hidden">Questions</span><span className="hidden md:inline">Question library</span></span></button>
         <button aria-label="Favorites" className={itemClass("favorites")} title={collapsed ? "Favorites" : undefined} type="button" onClick={() => onPageChange("favorites")}><StarIcon filled={activePage === "favorites"} /><span className={collapsed ? "md:hidden" : ""}>Favorites</span></button>
+        <button aria-label="Flashcards" className={itemClass("flashcards")} title={collapsed ? "Flashcards" : undefined} type="button" onClick={() => onPageChange("flashcards")}><FlashcardIcon /><span className={collapsed ? "md:hidden" : ""}>Flashcards</span></button>
         <button aria-label="Preparation" className={itemClass("practice")} title={collapsed ? "Preparation" : undefined} type="button" onClick={() => onPageChange("practice")}><PracticeIcon /><span className={collapsed ? "md:hidden" : ""}>Preparation{practiceCount > 0 && <span className="ml-1 rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] md:float-right md:ml-5 md:px-2 md:text-[10px]">{practiceCount}</span>}</span></button>
       </nav>
 
